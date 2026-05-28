@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}道路交通事故统计与可视化分析系统{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <span class="icon">▣</span>事故管理系统
+            <small>Traffic Accident Analytics</small>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon">◆</span>数据驾驶舱
+            </a>
+            <a href="{{ url_for('accident_list') }}" class="{% if request.endpoint in ['accident_list','accident_detail','accident_new','accident_edit'] %}active{% endif %}">
+                <span class="nav-icon">▤</span>事故台账
+            </a>
+            {% if current_user.role in ['admin','recorder'] %}
+            <a href="{{ url_for('accident_new') }}" class="{% if request.endpoint == 'accident_new' %}active{% endif %}">
+                <span class="nav-icon">＋</span>事故录入
+            </a>
+            {% endif %}
+            <a href="{{ url_for('statistics') }}" class="{% if request.endpoint == 'statistics' %}active{% endif %}">
+                <span class="nav-icon">▥</span>统计分析
+            </a>
+            {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('dictionaries') }}" class="{% if request.endpoint == 'dictionaries' %}active{% endif %}">
+                <span class="nav-icon">≡</span>字典维护
+            </a>
+            <a href="{{ url_for('user_list') }}" class="{% if request.endpoint == 'user_list' %}active{% endif %}">
+                <span class="nav-icon">●</span>用户与日志
+            </a>
+            {% endif %}
+        </nav>
+        <div class="sidebar-foot">
+            v1.0 · 单机版<br>
+            {{ now().strftime('%Y-%m-%d') }}
+        </div>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <div class="breadcrumb">{% block breadcrumb %}{% endblock %}</div>
+            <div class="user">
+                <span class="text-light">当前用户：</span><b>{{ current_user.name }}</b>
+                <span class="tag tag-info">{% if current_user.role == 'admin' %}管理员{% elif current_user.role == 'recorder' %}录入员{% else %}查看者{% endif %}</span>
+                <a href="{{ url_for('logout') }}">退出</a>
+            </div>
+        </header>
+
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<div class="flash-area">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="flash {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+</div>
+
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

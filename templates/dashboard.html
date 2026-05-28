@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% block title %}数据驾驶舱 - {{ super() }}{% endblock %}
+{% block breadcrumb %}<b>数据驾驶舱</b> · 全局态势一览{% endblock %}
+
+{% block content %}
+<div class="flex-between mb-10">
+    <div>
+        <label style="font-size:13px;color:#7f8c8d;margin-right:6px;">统计区间：</label>
+        <select id="periodSelect" class="form-control" style="display:inline-block;width:auto;">
+            <option value="3">近 3 个月</option>
+            <option value="6">近 6 个月</option>
+            <option value="12" selected>近 12 个月</option>
+            <option value="24">近 24 个月</option>
+            <option value="36">近 36 个月</option>
+        </select>
+    </div>
+    <div>
+        <a class="btn btn-success" href="{{ url_for('export_report', year=now().year, month=now().month) }}">导出本月 Word 月报</a>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">事故总数</div>
+        <div class="kpi-value" id="kpi_total">—<span class="kpi-unit">起</span></div>
+        <div id="kpi_total_yoy"></div>
+    </div>
+    <div class="kpi-card danger">
+        <div class="kpi-label">死亡人数</div>
+        <div class="kpi-value" id="kpi_deaths">—<span class="kpi-unit">人</span></div>
+        <div id="kpi_deaths_yoy"></div>
+    </div>
+    <div class="kpi-card warning">
+        <div class="kpi-label">受伤人数</div>
+        <div class="kpi-value" id="kpi_injuries">—<span class="kpi-unit">人</span></div>
+        <div id="kpi_injuries_yoy"></div>
+    </div>
+    <div class="kpi-card info">
+        <div class="kpi-label">直接经济损失</div>
+        <div class="kpi-value" id="kpi_loss">—</div>
+        <div id="kpi_loss_yoy"></div>
+    </div>
+</div>
+
+<div class="chart-grid">
+    <div class="card">
+        <div class="card-title">事故月度趋势 <span class="extra">数量 / 死亡 / 受伤</span></div>
+        <div id="chart_trend" class="chart-box"></div>
+    </div>
+    <div class="card">
+        <div class="card-title">事故类型构成</div>
+        <div id="chart_type" class="chart-box"></div>
+    </div>
+</div>
+
+<div class="chart-grid-2">
+    <div class="card">
+        <div class="card-title">事故多发路段 TOP 10</div>
+        <div id="chart_road" class="chart-box"></div>
+    </div>
+    <div class="card">
+        <div class="card-title">事故主要原因</div>
+        <div id="chart_cause" class="chart-box"></div>
+    </div>
+</div>
+
+<div class="chart-grid-2">
+    <div class="card">
+        <div class="card-title">时段分布热力图 <span class="extra">24小时 × 星期</span></div>
+        <div id="chart_heatmap" class="chart-box"></div>
+    </div>
+    <div class="card">
+        <div class="card-title">各等级死伤对比</div>
+        <div id="chart_casualty" class="chart-box"></div>
+    </div>
+</div>
+
+<div class="chart-grid-3">
+    <div class="card">
+        <div class="card-title">辖区事故分布</div>
+        <div id="chart_district" class="chart-box"></div>
+    </div>
+    <div class="card">
+        <div class="card-title">天气状况构成</div>
+        <div id="chart_weather" class="chart-box"></div>
+    </div>
+    <div class="card">
+        <div class="card-title">路面状况构成</div>
+        <div id="chart_road_cond" class="chart-box"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const charts = {};
+function chart(id) {
+    if (!charts[id]) charts[id] = echarts.init(document.getElementById(id));
+    return charts[id];
+}
+window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
+
+async function loadAll() {
+    const months = document.getElementById('periodSelect').value;
+
+    // KPI
+    const s = await AccApp.fetchJSON(`/api/dashboard/summary?months=${months}`);
+    document.getElementById('kpi_total').innerHTML = `${s.total}<span class="kpi-unit">起</span>`;
+    document.getElementById('kpi_deaths').innerHTML = `${s.deaths}<span class="kpi-unit">人</span>`;
+    document.getElementById('kpi_injuries').innerHTML = `${s.injuries}<span class="kpi-unit">人</span>`;
+    document.getElementById('kpi_loss').innerHTML = `${AccApp.formatMoney(s.loss)}<span class="kpi-unit">元</span>`;
+    document.getElementById('kpi_total_yoy').innerHTML = AccApp.renderYoY(s.total_yoy);
+    document.getElementById('kpi_deaths_yoy').innerHTML = AccApp.renderYoY(s.deaths_yoy);
+    document.getElementById('kpi_injuries_yoy').innerHTML = AccApp.renderYoY(s.injuries_yoy);
+    document.getElementById('kpi_loss_yoy').innerHTML = AccApp.renderYoY(s.loss_yoy);
+
+    // 趋势
+    const t = await AccApp.fetchJSON(`/api/dashboard/trend?months=${months}`);
+    chart('chart_trend').setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['事故数', '死亡', '受伤'], right: 10, top: 0 },
+        grid: { left: 50, right: 30, top: 40, bottom: 30 },
+        xAxis: { type: 'category', data: t.months, axisLabel: { rotate: 30 } },
+        yAxis: [
+            { type: 'value', name: '事故数', position: 'left' },
+            { type: 'value', name: '人数', position: 'right' }
+        ],
+        series: [
+            { name: '事故数', type: 'line', smooth: true, data: t.counts, areaStyle: { opacity: 0.2 }, itemStyle: { color: '#1f4e79' }, lineStyle: { width: 3 } },
+            { name: '死亡', type: 'bar', yAxisIndex: 1, data: t.deaths, itemStyle: { color: '#c0392b' }, barWidth: 8 },
+            { name: '受伤', type: 'bar', yAxisIndex: 1, data: t.injuries, itemStyle: { color: '#e67e22' }, barWidth: 8 },
+        ]
+    });
+
+    // 类型分布
+    const types = await AccApp.fetchJSON(`/api/dashboard/distribution?field=type&months=${months}`);
+    chart('chart_type').setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        legend: { type: 'scroll', orient: 'vertical', right: 5, top: 10, bottom: 10 },
+        color: AccApp.colors,
+        series: [{
+            type: 'pie',
+            radius: ['40%', '70%'],
+            center: ['38%', '50%'],
+            label: { formatter: '{b}\n{d}%' },
+            data: types.map(x => ({ name: x.name, value: x.count }))
+        }]
+    });
+
+    // TOP 路段
+    const roads = await AccApp.fetchJSON(`/api/dashboard/top-roads?months=${months}`);
+    chart('chart_road').setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { data: ['事故数', '死亡'], top: 0 },
+        grid: { left: 110, right: 30, top: 35, bottom: 25 },
+        xAxis: { type: 'value' },
+        yAxis: { type: 'category', data: roads.map(x => x.name).reverse(), axisLabel: { fontSize: 12 } },
+        series: [
+            { name: '事故数', type: 'bar', data: roads.map(x => x.count).reverse(), itemStyle: { color: '#1f4e79' }, label: { show: true, position: 'right' } },
+            { name: '死亡', type: 'bar', data: roads.map(x => x.deaths).reverse(), itemStyle: { color: '#c0392b' } },
+        ]
+    });
+
+    // 原因
+    const causes = await AccApp.fetchJSON(`/api/dashboard/distribution?field=cause&months=${months}`);
+    chart('chart_cause').setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: 100, right: 30, top: 10, bottom: 25 },
+        xAxis: { type: 'value' },
+        yAxis: { type: 'category', data: causes.slice(0, 10).map(x => x.name).reverse() },
+        series: [{
+            type: 'bar',
+            data: causes.slice(0, 10).map(x => x.count).reverse(),
+            itemStyle: { color: '#e67e22' },
+            label: { show: true, position: 'right' }
+        }]
+    });
+
+    // 热力图
+    const heat = await AccApp.fetchJSON(`/api/dashboard/heatmap?months=${months}`);
+    const hours = Array.from({ length: 24 }, (_, i) => i + '时');
+    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    chart('chart_heatmap').setOption({
+        tooltip: { position: 'top', formatter: p => `${days[p.value[1]]} ${hours[p.value[0]]}: ${p.value[2]} 起` },
+        grid: { left: 50, right: 30, top: 30, bottom: 50 },
+        xAxis: { type: 'category', data: hours, splitArea: { show: true } },
+        yAxis: { type: 'category', data: days, splitArea: { show: true } },
+        visualMap: { min: 0, max: heat.max || 1, calculable: true, orient: 'horizontal', left: 'center', bottom: 5, inRange: { color: ['#e8f4fd', '#1f4e79', '#c0392b'] } },
+        series: [{
+            type: 'heatmap',
+            data: heat.data,
+            label: { show: heat.max < 30 }
+        }]
+    });
+
+    // 各等级死伤
+    const cas = await AccApp.fetchJSON(`/api/dashboard/casualty?months=${months}`);
+    chart('chart_casualty').setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { data: ['死亡', '受伤'], top: 0 },
+        grid: { left: 50, right: 30, top: 35, bottom: 25 },
+        xAxis: { type: 'category', data: cas.map(x => x.name) },
+        yAxis: { type: 'value' },
+        series: [
+            { name: '死亡', type: 'bar', stack: 'casualty', data: cas.map(x => x.deaths), itemStyle: { color: '#c0392b' } },
+            { name: '受伤', type: 'bar', stack: 'casualty', data: cas.map(x => x.injuries), itemStyle: { color: '#e67e22' } },
+        ]
+    });
+
+    // 辖区
+    const districts = await AccApp.fetchJSON(`/api/dashboard/distribution?field=district&months=${months}`);
+    chart('chart_district').setOption({
+        tooltip: { trigger: 'item' },
+        color: AccApp.colors,
+        series: [{
+            type: 'pie',
+            radius: '70%',
+            label: { formatter: '{b}\n{c} 起' },
+            data: districts.map(x => ({ name: x.name, value: x.count }))
+        }]
+    });
+
+    // 天气
+    const weather = await AccApp.fetchJSON(`/api/dashboard/distribution?field=weather&months=${months}`);
+    chart('chart_weather').setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        color: AccApp.colors,
+        series: [{
+            type: 'pie',
+            radius: ['30%', '70%'],
+            roseType: 'radius',
+            label: { formatter: '{b}\n{d}%' },
+            data: weather.map(x => ({ name: x.name, value: x.count }))
+        }]
+    });
+
+    // 路面状况
+    const rc = await AccApp.fetchJSON(`/api/dashboard/distribution?field=road_condition&months=${months}`);
+    chart('chart_road_cond').setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        color: AccApp.colors,
+        series: [{
+            type: 'pie',
+            radius: '70%',
+            label: { formatter: '{b}\n{d}%' },
+            data: rc.map(x => ({ name: x.name, value: x.count }))
+        }]
+    });
+}
+
+document.getElementById('periodSelect').addEventListener('change', loadAll);
+loadAll();
+</script>
+{% endblock %}

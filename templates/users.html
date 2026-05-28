@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}用户与日志 - {{ super() }}{% endblock %}
+{% block breadcrumb %}<b>用户管理 / 操作日志</b>{% endblock %}
+
+{% block content %}
+<div class="chart-grid">
+    <div>
+        <div class="card">
+            <div class="card-title">用户列表 <span class="extra">{{ users | length }} 人</span></div>
+            <table class="table">
+                <thead>
+                    <tr><th>用户名</th><th>姓名</th><th>角色</th><th>创建时间</th><th class="center">操作</th></tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td><b>{{ u.username }}</b></td>
+                        <td>{{ u.name }}</td>
+                        <td>
+                            {% if u.role == 'admin' %}<span class="tag tag-danger">管理员</span>
+                            {% elif u.role == 'recorder' %}<span class="tag tag-warn">录入员</span>
+                            {% else %}<span class="tag tag-info">查看者</span>{% endif %}
+                        </td>
+                        <td class="text-light">{{ u.created_at }}</td>
+                        <td class="center row-actions">
+                            <form style="display:inline" method="post" action="{{ url_for('user_reset', uid=u.id) }}" onsubmit="return resetPwd(this);">
+                                <input type="hidden" name="password" id="pwd_{{ u.id }}">
+                                <button class="btn btn-sm btn-default" type="submit">重置密码</button>
+                            </form>
+                            {% if u.id != current_user.id %}
+                            <form style="display:inline" method="post" action="{{ url_for('user_delete', uid=u.id) }}" onsubmit="return confirm('确认删除？');">
+                                <button class="btn btn-sm btn-danger" type="submit">删除</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <div class="card-title">新增用户</div>
+            <form method="post" action="{{ url_for('user_add') }}">
+                <div class="form-row cols-2">
+                    <div class="form-group"><label class="required">用户名</label><input class="form-control" name="username" required></div>
+                    <div class="form-group"><label>姓名</label><input class="form-control" name="name"></div>
+                </div>
+                <div class="form-row cols-2">
+                    <div class="form-group"><label class="required">初始密码</label><input class="form-control" type="password" name="password" required></div>
+                    <div class="form-group">
+                        <label>角色</label>
+                        <select class="form-control" name="role">
+                            <option value="recorder">录入员</option>
+                            <option value="viewer">查看者</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn" type="submit">＋ 添加用户</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-title">数据备份</div>
+            <p class="text-light" style="margin-bottom:10px;">每次启动会自动备份，保留近 30 天；也可手动备份到 backup/ 目录。</p>
+            <form method="post" action="{{ url_for('backup') }}">
+                <button class="btn btn-warn" type="submit">立即备份当前数据库</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">最近操作日志 <span class="extra">最新 50 条</span></div>
+        <table class="table">
+            <thead><tr><th>时间</th><th>用户</th><th>操作</th><th>对象</th></tr></thead>
+            <tbody>
+                {% for l in logs %}
+                <tr>
+                    <td class="text-light" style="white-space:nowrap;">{{ l.created_at }}</td>
+                    <td>{{ l.username }}</td>
+                    <td><span class="tag">{{ l.action }}</span></td>
+                    <td class="text-light">{{ l.target }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function resetPwd(form) {
+    const pwd = prompt('请输入新密码（至少 6 位）：');
+    if (!pwd || pwd.length < 6) {
+        alert('密码无效');
+        return false;
+    }
+    form.querySelector('input[type=hidden]').value = pwd;
+    return true;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - 道路交通事故统计与可视化分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="login-page">
+    <div class="login-box">
+        <h1>道路交通事故统计与可视化分析系统</h1>
+        <div class="subtitle">Traffic Accident Statistics & Analytics</div>
+        <form method="post">
+            <div class="form-group">
+                <label>用户名</label>
+                <input class="form-control" name="username" autofocus required>
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input class="form-control" name="password" type="password" required>
+            </div>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for cat, msg in messages %}
+                    <div class="flash {{ cat }}" style="position:relative;top:0;right:0;margin-bottom:12px;">{{ msg }}</div>
+                {% endfor %}
+            {% endwith %}
+            <button class="btn" type="submit">登 录</button>
+        </form>
+        <div class="tips">
+            初始账号：admin / admin123（管理员）<br>
+            recorder / 123456（录入员）<br>
+            viewer / 123456（查看者）
+        </div>
+    </div>
+</div>
+</body>
+</html>

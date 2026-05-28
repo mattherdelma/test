@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+{% block title %}{% if acc %}编辑事故{% else %}新增事故{% endif %} - {{ super() }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('accident_list') }}">事故台账</a> · <b>{% if acc %}编辑 {{ acc.accident_no }}{% else %}新增事故{% endif %}</b>{% endblock %}
+
+{% block content %}
+<form method="post" id="accForm">
+<div class="card">
+    <div class="section-divider">一、事故基本信息</div>
+    <div class="form-row cols-3">
+        <div class="form-group">
+            <label>事故编号</label>
+            <input class="form-control" name="accident_no" value="{{ acc.accident_no if acc else '' }}" placeholder="留空自动生成">
+        </div>
+        <div class="form-group">
+            <label class="required">发生时间</label>
+            <input class="form-control" type="datetime-local" name="occur_time" value="{{ (acc.occur_time or '').replace(' ', 'T') if acc else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label>上报时间</label>
+            <input class="form-control" type="datetime-local" name="report_time" value="{{ (acc.report_time or '').replace(' ', 'T') if acc else '' }}">
+        </div>
+    </div>
+    <div class="form-row cols-3">
+        <div class="form-group">
+            <label>事故等级</label>
+            <select class="form-control" name="level">
+                <option value="">请选择</option>
+                {% for v in dicts.get('level', []) %}
+                    <option value="{{ v }}" {% if acc and acc.level == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>事故类型</label>
+            <select class="form-control" name="type">
+                <option value="">请选择</option>
+                {% for v in dicts.get('type', []) %}
+                    <option value="{{ v }}" {% if acc and acc.type == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>天气</label>
+            <select class="form-control" name="weather">
+                <option value="">请选择</option>
+                {% for v in dicts.get('weather', []) %}
+                    <option value="{{ v }}" {% if acc and acc.weather == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="form-row cols-3">
+        <div class="form-group">
+            <label>能见度</label>
+            <select class="form-control" name="visibility">
+                <option value="">请选择</option>
+                {% for v in dicts.get('visibility', []) %}
+                    <option value="{{ v }}" {% if acc and acc.visibility == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>处理民警</label>
+            <input class="form-control" name="handler" value="{{ acc.handler if acc else '' }}">
+        </div>
+        <div class="form-group">
+            <label>处理结果</label>
+            <select class="form-control" name="handle_result">
+                <option value="">请选择</option>
+                {% for v in ['已结案','调解中','诉讼中','已撤案','其他'] %}
+                    <option value="{{ v }}" {% if acc and acc.handle_result == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="section-divider">二、事故地点</div>
+    <div class="form-row cols-3">
+        <div class="form-group">
+            <label>行政区划</label>
+            <select class="form-control" name="district">
+                <option value="">请选择</option>
+                {% for v in dicts.get('district', []) %}
+                    <option value="{{ v }}" {% if acc and acc.district == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>道路名称</label>
+            <input class="form-control" name="road_name" value="{{ acc.road_name if acc else '' }}">
+        </div>
+        <div class="form-group">
+            <label>路段</label>
+            <input class="form-control" name="road_section" value="{{ acc.road_section if acc else '' }}">
+        </div>
+    </div>
+    <div class="form-row cols-3">
+        <div class="form-group">
+            <label>桩号 / 里程</label>
+            <input class="form-control" name="mileage" value="{{ acc.mileage if acc else '' }}" placeholder="K12+500">
+        </div>
+        <div class="form-group">
+            <label>经度</label>
+            <input class="form-control" name="longitude" type="number" step="0.000001" value="{{ acc.longitude if acc and acc.longitude else '' }}">
+        </div>
+        <div class="form-group">
+            <label>纬度</label>
+            <input class="form-control" name="latitude" type="number" step="0.000001" value="{{ acc.latitude if acc and acc.latitude else '' }}">
+        </div>
+    </div>
+    <div class="form-row cols-3">
+        <div class="form-group">
+            <label>道路类型</label>
+            <select class="form-control" name="road_type">
+                <option value="">请选择</option>
+                {% for v in dicts.get('road_type', []) %}
+                    <option value="{{ v }}" {% if acc and acc.road_type == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>道路线形</label>
+            <select class="form-control" name="road_shape">
+                <option value="">请选择</option>
+                {% for v in dicts.get('road_shape', []) %}
+                    <option value="{{ v }}" {% if acc and acc.road_shape == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>路面状况</label>
+            <select class="form-control" name="road_condition">
+                <option value="">请选择</option>
+                {% for v in dicts.get('road_condition', []) %}
+                    <option value="{{ v }}" {% if acc and acc.road_condition == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="section-divider">三、伤亡与损失</div>
+    <div class="form-row cols-3">
+        <div class="form-group">
+            <label>死亡人数</label>
+            <input class="form-control" type="number" min="0" name="death_count" value="{{ acc.death_count if acc else 0 }}">
+        </div>
+        <div class="form-group">
+            <label>受伤人数</label>
+            <input class="form-control" type="number" min="0" name="injury_count" value="{{ acc.injury_count if acc else 0 }}">
+        </div>
+        <div class="form-group">
+            <label>直接经济损失(元)</label>
+            <input class="form-control" type="number" min="0" step="0.01" name="economic_loss" value="{{ acc.economic_loss if acc else 0 }}">
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="section-divider">四、事故原因与备注</div>
+    <div class="form-row cols-2">
+        <div class="form-group">
+            <label>事故原因</label>
+            <select class="form-control" name="cause">
+                <option value="">请选择</option>
+                {% for v in dicts.get('cause', []) %}
+                    <option value="{{ v }}" {% if acc and acc.cause == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>备注</label>
+            <input class="form-control" name="remarks" value="{{ acc.remarks if acc else '' }}">
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="section-divider flex-between">
+        <span>五、涉事车辆</span>
+        <button type="button" class="btn btn-sm" onclick="addVehicle()">＋ 添加车辆</button>
+    </div>
+    <table class="table" id="vehicleTable">
+        <thead>
+            <tr>
+                <th>车牌号</th><th>车型</th><th>所有人</th><th>保险</th><th>使用性质</th><th class="center">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in vehicles %}
+                <tr>
+                    <td><input class="form-control" name="v_plate_no" value="{{ v.plate_no }}"></td>
+                    <td>
+                        <select class="form-control" name="v_vehicle_type">
+                            <option value="">--</option>
+                            {% for o in dicts.get('vehicle_type', []) %}
+                                <option value="{{ o }}" {% if v.vehicle_type == o %}selected{% endif %}>{{ o }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input class="form-control" name="v_owner" value="{{ v.owner }}"></td>
+                    <td><input class="form-control" name="v_insurance" value="{{ v.insurance }}"></td>
+                    <td>
+                        <select class="form-control" name="v_use_type">
+                            <option value="">--</option>
+                            {% for o in dicts.get('use_type', []) %}
+                                <option value="{{ o }}" {% if v.use_type == o %}selected{% endif %}>{{ o }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="center"><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">删</button></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="section-divider flex-between">
+        <span>六、涉事人员</span>
+        <button type="button" class="btn btn-sm" onclick="addPerson()">＋ 添加人员</button>
+    </div>
+    <table class="table" id="personTable">
+        <thead>
+            <tr>
+                <th>姓名</th><th>身份证号</th><th>性别</th><th>年龄</th><th>驾龄</th><th>是否饮酒</th><th>责任</th><th>伤亡</th><th class="center">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in persons %}
+                <tr>
+                    <td><input class="form-control" name="p_name" value="{{ p.name }}"></td>
+                    <td><input class="form-control" name="p_id_card" value="{{ p.id_card }}"></td>
+                    <td>
+                        <select class="form-control" name="p_gender">
+                            <option value="">--</option>
+                            <option {% if p.gender == '男' %}selected{% endif %}>男</option>
+                            <option {% if p.gender == '女' %}selected{% endif %}>女</option>
+                        </select>
+                    </td>
+                    <td><input class="form-control" type="number" min="0" name="p_age" value="{{ p.age or '' }}"></td>
+                    <td><input class="form-control" type="number" min="0" name="p_driving_years" value="{{ p.driving_years or '' }}"></td>
+                    <td>
+                        <select class="form-control" name="p_drunk">
+                            <option value="0" {% if p.drunk == 0 %}selected{% endif %}>否</option>
+                            <option value="1" {% if p.drunk == 1 %}selected{% endif %}>是</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-control" name="p_responsibility">
+                            <option value="">--</option>
+                            {% for o in dicts.get('responsibility', []) %}
+                                <option value="{{ o }}" {% if p.responsibility == o %}selected{% endif %}>{{ o }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-control" name="p_injury_level">
+                            <option value="">--</option>
+                            {% for o in dicts.get('injury_level', []) %}
+                                <option value="{{ o }}" {% if p.injury_level == o %}selected{% endif %}>{{ o }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="center"><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">删</button></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card" style="text-align:center;">
+    <button class="btn" type="submit" style="padding:8px 30px;">保存</button>
+    <a class="btn btn-default" href="{{ url_for('accident_list') }}" style="padding:8px 30px;">取消</a>
+</div>
+</form>
+
+<script>
+const DICTS = {{ dicts | tojson }};
+
+function buildSelect(name, opts, selected = '') {
+    let h = `<select class="form-control" name="${name}"><option value="">--</option>`;
+    (opts || []).forEach(o => h += `<option value="${o}" ${o === selected ? 'selected' : ''}>${o}</option>`);
+    return h + '</select>';
+}
+
+function addVehicle() {
+    const tb = document.querySelector('#vehicleTable tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input class="form-control" name="v_plate_no"></td>
+        <td>${buildSelect('v_vehicle_type', DICTS.vehicle_type)}</td>
+        <td><input class="form-control" name="v_owner"></td>
+        <td><input class="form-control" name="v_insurance"></td>
+        <td>${buildSelect('v_use_type', DICTS.use_type)}</td>
+        <td class="center"><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">删</button></td>
+    `;
+    tb.appendChild(tr);
+}
+
+function addPerson() {
+    const tb = document.querySelector('#personTable tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input class="form-control" name="p_name"></td>
+        <td><input class="form-control" name="p_id_card"></td>
+        <td><select class="form-control" name="p_gender"><option value="">--</option><option>男</option><option>女</option></select></td>
+        <td><input class="form-control" type="number" min="0" name="p_age"></td>
+        <td><input class="form-control" type="number" min="0" name="p_driving_years"></td>
+        <td><select class="form-control" name="p_drunk"><option value="0">否</option><option value="1">是</option></select></td>
+        <td>${buildSelect('p_responsibility', DICTS.responsibility)}</td>
+        <td>${buildSelect('p_injury_level', DICTS.injury_level)}</td>
+        <td class="center"><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">删</button></td>
+    `;
+    tb.appendChild(tr);
+}
+
+function removeRow(btn) {
+    btn.closest('tr').remove();
+}
+
+// 新增模式下先给一行空白
+{% if not acc %}
+addVehicle();
+addPerson();
+{% endif %}
+</script>
+{% endblock %}

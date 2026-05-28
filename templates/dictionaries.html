@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}字典维护 - {{ super() }}{% endblock %}
+{% block breadcrumb %}<b>字典维护</b> · 下拉项配置{% endblock %}
+
+{% set CAT_NAMES = {
+    'level':'事故等级', 'type':'事故类型', 'weather':'天气',
+    'visibility':'能见度', 'road_type':'道路类型', 'road_shape':'道路线形',
+    'road_condition':'路面状况', 'vehicle_type':'车型',
+    'use_type':'车辆使用性质', 'cause':'事故原因',
+    'responsibility':'责任划分', 'injury_level':'伤亡程度', 'district':'行政区划'
+} %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">添加字典项</div>
+    <form method="post" action="{{ url_for('dict_add') }}" class="filter-bar">
+        <div class="form-group">
+            <label>字典分类</label>
+            <select class="form-control" name="category" style="width:180px;" required>
+                {% for k, v in CAT_NAMES.items() %}
+                    <option value="{{ k }}">{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>项目名称</label>
+            <input class="form-control" name="name" style="width:240px;" required>
+        </div>
+        <div class="form-group">
+            <label>&nbsp;</label>
+            <button class="btn" type="submit">＋ 添加</button>
+        </div>
+    </form>
+</div>
+
+<div class="chart-grid-2">
+{% for cat, items in dicts.items() %}
+<div class="card">
+    <div class="card-title">{{ CAT_NAMES.get(cat, cat) }} <span class="extra">{{ items | length }} 项</span></div>
+    <div>
+        {% for name in items %}
+            <span class="tag tag-info" style="font-size:13px;padding:5px 12px;margin:3px;">{{ name }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

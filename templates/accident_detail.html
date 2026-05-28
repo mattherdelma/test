@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}事故详情 {{ acc.accident_no }} - {{ super() }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('accident_list') }}">事故台账</a> · <b>{{ acc.accident_no }}</b>{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="flex-between mb-10">
+        <h2 style="font-size:18px;color:#1f4e79;">
+            {{ acc.accident_no }}
+            {% if acc.level == '特大事故' %}<span class="tag tag-major">{{ acc.level }}</span>
+            {% elif acc.level == '重大事故' %}<span class="tag tag-danger">{{ acc.level }}</span>
+            {% elif acc.level == '一般事故' %}<span class="tag tag-warn">{{ acc.level }}</span>
+            {% else %}<span class="tag">{{ acc.level }}</span>{% endif %}
+        </h2>
+        <div>
+            {% if current_user.role in ['admin','recorder'] %}
+                <a class="btn" href="{{ url_for('accident_edit', acc_id=acc.id) }}">编辑</a>
+            {% endif %}
+            <a class="btn btn-default" href="{{ url_for('accident_list') }}">返回</a>
+        </div>
+    </div>
+
+    <div class="section-divider">一、基本信息</div>
+    <table class="table">
+        <tr><th width="120">发生时间</th><td>{{ acc.occur_time }}</td><th width="120">上报时间</th><td>{{ acc.report_time or '—' }}</td></tr>
+        <tr><th>事故类型</th><td>{{ acc.type or '—' }}</td><th>天气 / 能见度</th><td>{{ acc.weather or '—' }} / {{ acc.visibility or '—' }}</td></tr>
+        <tr><th>处理民警</th><td>{{ acc.handler or '—' }}</td><th>处理结果</th><td>{{ acc.handle_result or '—' }}</td></tr>
+    </table>
+
+    <div class="section-divider">二、事故地点</div>
+    <table class="table">
+        <tr><th width="120">行政区划</th><td>{{ acc.district or '—' }}</td><th width="120">道路名称</th><td>{{ acc.road_name or '—' }}</td></tr>
+        <tr><th>路段 / 桩号</th><td>{{ acc.road_section or '—' }} / {{ acc.mileage or '—' }}</td><th>道路类型</th><td>{{ acc.road_type or '—' }}</td></tr>
+        <tr><th>道路线形</th><td>{{ acc.road_shape or '—' }}</td><th>路面状况</th><td>{{ acc.road_condition or '—' }}</td></tr>
+        <tr><th>经纬度</th><td colspan="3">{{ acc.longitude or '—' }} , {{ acc.latitude or '—' }}</td></tr>
+    </table>
+
+    <div class="section-divider">三、伤亡与损失</div>
+    <table class="table">
+        <tr>
+            <th width="120">死亡人数</th>
+            <td><b class="{% if acc.death_count > 0 %}text-danger{% endif %}">{{ acc.death_count }}</b> 人</td>
+            <th width="120">受伤人数</th>
+            <td>{{ acc.injury_count }} 人</td>
+        </tr>
+        <tr>
+            <th>直接损失</th>
+            <td colspan="3">{{ '{:,.2f}'.format(acc.economic_loss or 0) }} 元</td>
+        </tr>
+    </table>
+
+    <div class="section-divider">四、原因与备注</div>
+    <table class="table">
+        <tr><th width="120">事故原因</th><td>{{ acc.cause or '—' }}</td></tr>
+        <tr><th>备注</th><td>{{ acc.remarks or '—' }}</td></tr>
+    </table>
+
+    <div class="section-divider">五、涉事车辆 ({{ vehicles | length }})</div>
+    {% if vehicles %}
+    <table class="table">
+        <thead><tr><th>车牌号</th><th>车型</th><th>所有人</th><th>保险</th><th>使用性质</th></tr></thead>
+        <tbody>
+            {% for v in vehicles %}
+            <tr><td>{{ v.plate_no }}</td><td>{{ v.vehicle_type }}</td><td>{{ v.owner }}</td><td>{{ v.insurance }}</td><td>{{ v.use_type }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}<div class="empty">未登记车辆</div>{% endif %}
+
+    <div class="section-divider">六、涉事人员 ({{ persons | length }})</div>
+    {% if persons %}
+    <table class="table">
+        <thead><tr><th>姓名</th><th>身份证号</th><th>性别</th><th>年龄</th><th>驾龄</th><th>饮酒</th><th>责任</th><th>伤亡</th></tr></thead>
+        <tbody>
+            {% for p in persons %}
+            <tr>
+                <td>{{ p.name }}</td>
+                <td>{{ p.id_card }}</td>
+                <td>{{ p.gender }}</td>
+                <td>{{ p.age }}</td>
+                <td>{{ p.driving_years }}</td>
+                <td>{% if p.drunk %}<span class="tag tag-danger">是</span>{% else %}否{% endif %}</td>
+                <td>{{ p.responsibility }}</td>
+                <td>
+                    {% if p.injury_level == '死亡' %}<span class="tag tag-major">{{ p.injury_level }}</span>
+                    {% elif p.injury_level == '重伤' %}<span class="tag tag-danger">{{ p.injury_level }}</span>
+                    {% elif p.injury_level == '轻伤' %}<span class="tag tag-warn">{{ p.injury_level }}</span>
+                    {% else %}{{ p.injury_level }}{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}<div class="empty">未登记人员</div>{% endif %}
+
+    <div class="text-light" style="margin-top:14px;font-size:12px;">
+        创建时间：{{ acc.created_at }} &nbsp;&nbsp; 最后修改：{{ acc.updated_at }}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}事故台账 - {{ super() }}{% endblock %}
+{% block breadcrumb %}<b>事故台账</b> · 共 {{ total }} 条{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form method="get" class="filter-bar">
+        <div class="form-group">
+            <label>关键词</label>
+            <input class="form-control" name="kw" value="{{ filters.kw }}" placeholder="编号 / 道路 / 民警">
+        </div>
+        <div class="form-group">
+            <label>事故等级</label>
+            <select class="form-control" name="level">
+                <option value="">全部</option>
+                {% for v in dicts.get('level', []) %}
+                    <option value="{{ v }}" {% if filters.level == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>事故类型</label>
+            <select class="form-control" name="type">
+                <option value="">全部</option>
+                {% for v in dicts.get('type', []) %}
+                    <option value="{{ v }}" {% if filters.type == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>行政区划</label>
+            <select class="form-control" name="district">
+                <option value="">全部</option>
+                {% for v in dicts.get('district', []) %}
+                    <option value="{{ v }}" {% if filters.district == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>起始日期</label>
+            <input class="form-control" type="date" name="start_date" value="{{ filters.start_date }}">
+        </div>
+        <div class="form-group">
+            <label>截止日期</label>
+            <input class="form-control" type="date" name="end_date" value="{{ filters.end_date }}">
+        </div>
+        <div class="form-group">
+            <label>&nbsp;</label>
+            <button class="btn" type="submit">查询</button>
+            <a class="btn btn-default" href="{{ url_for('accident_list') }}">重置</a>
+        </div>
+        <div class="form-group" style="margin-left:auto;">
+            <label>&nbsp;</label>
+            <a class="btn btn-success" href="{{ url_for('export_excel', **filters) }}">导出 Excel</a>
+            {% if current_user.role in ['admin','recorder'] %}
+                <a class="btn" href="{{ url_for('accident_new') }}">＋ 新增</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    {% if rows %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>事故编号</th>
+                <th>发生时间</th>
+                <th>等级</th>
+                <th>类型</th>
+                <th>地点</th>
+                <th class="center">死/伤</th>
+                <th class="right">损失(元)</th>
+                <th>原因</th>
+                <th>处理</th>
+                <th class="center">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rows %}
+            <tr>
+                <td><a href="{{ url_for('accident_detail', acc_id=r.id) }}">{{ r.accident_no }}</a></td>
+                <td>{{ r.occur_time }}</td>
+                <td>
+                    {% if r.level == '特大事故' %}<span class="tag tag-major">{{ r.level }}</span>
+                    {% elif r.level == '重大事故' %}<span class="tag tag-danger">{{ r.level }}</span>
+                    {% elif r.level == '一般事故' %}<span class="tag tag-warn">{{ r.level }}</span>
+                    {% else %}<span class="tag">{{ r.level }}</span>{% endif %}
+                </td>
+                <td>{{ r.type }}</td>
+                <td>{{ r.district }} · {{ r.road_name }}</td>
+                <td class="center">
+                    {% if r.death_count > 0 %}<b class="text-danger">{{ r.death_count }}</b>{% else %}0{% endif %}
+                    / {{ r.injury_count }}
+                </td>
+                <td class="right">{{ '{:,.0f}'.format(r.economic_loss or 0) }}</td>
+                <td>{{ r.cause }}</td>
+                <td>{{ r.handle_result }}</td>
+                <td class="center row-actions">
+                    <a class="btn btn-sm btn-default" href="{{ url_for('accident_detail', acc_id=r.id) }}">详情</a>
+                    {% if current_user.role in ['admin','recorder'] %}
+                        <a class="btn btn-sm btn-default" href="{{ url_for('accident_edit', acc_id=r.id) }}">编辑</a>
+                    {% endif %}
+                    {% if current_user.role == 'admin' %}
+                        <form style="display:inline" method="post" action="{{ url_for('accident_delete', acc_id=r.id) }}" onsubmit="return confirm('确认删除此条事故记录？');">
+                            <button class="btn btn-sm btn-danger" type="submit">删除</button>
+                        </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% set base_args = {'kw':filters.kw,'level':filters.level,'type':filters.type,'district':filters.district,'start_date':filters.start_date,'end_date':filters.end_date} %}
+        {% if page > 1 %}
+            <a href="{{ url_for('accident_list', page=page-1, **base_args) }}">上一页</a>
+        {% else %}<span class="disabled">上一页</span>{% endif %}
+        <span class="active">{{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+            <a href="{{ url_for('accident_list', page=page+1, **base_args) }}">下一页</a>
+        {% else %}<span class="disabled">下一页</span>{% endif %}
+    </div>
+    {% else %}
+    <div class="empty">暂无数据。试试调整筛选条件，或<a href="{{ url_for('accident_new') if current_user.role in ['admin','recorder'] else '#' }}">新增事故</a>。</div>
+    {% endif %}
+</div>
+{% endblock %}

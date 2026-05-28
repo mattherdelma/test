@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block title %}统计分析 - {{ super() }}{% endblock %}
+{% block breadcrumb %}<b>统计分析</b> · 多维交叉{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="filter-bar">
+        <div class="form-group">
+            <label>统计区间</label>
+            <select id="periodSelect" class="form-control" style="width:180px;">
+                <option value="3">近 3 个月</option>
+                <option value="6">近 6 个月</option>
+                <option value="12" selected>近 12 个月</option>
+                <option value="24">近 24 个月</option>
+                <option value="36">近 36 个月</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>分析维度</label>
+            <select id="dimSelect" class="form-control" style="width:180px;">
+                <option value="type">事故类型</option>
+                <option value="level">事故等级</option>
+                <option value="cause">事故原因</option>
+                <option value="weather">天气状况</option>
+                <option value="road_type">道路类型</option>
+                <option value="road_condition">路面状况</option>
+                <option value="district">行政区划</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="chart-grid-2">
+    <div class="card">
+        <div class="card-title">维度分布（饼图）</div>
+        <div id="chart_pie" class="chart-box tall"></div>
+    </div>
+    <div class="card">
+        <div class="card-title">维度排名（条形图）</div>
+        <div id="chart_bar" class="chart-box tall"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">月度趋势</div>
+    <div id="chart_trend" class="chart-box tall"></div>
+</div>
+
+<div class="chart-grid-2">
+    <div class="card">
+        <div class="card-title">时段分布热力图</div>
+        <div id="chart_heatmap" class="chart-box tall"></div>
+    </div>
+    <div class="card">
+        <div class="card-title">事故多发路段 TOP 15</div>
+        <div id="chart_road" class="chart-box tall"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const charts = {};
+function chart(id) {
+    if (!charts[id]) charts[id] = echarts.init(document.getElementById(id));
+    return charts[id];
+}
+window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
+
+async function loadAll() {
+    const m = document.getElementById('periodSelect').value;
+    const dim = document.getElementById('dimSelect').value;
+
+    const dist = await AccApp.fetchJSON(`/api/dashboard/distribution?field=${dim}&months=${m}`);
+    chart('chart_pie').setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        legend: { type: 'scroll', orient: 'vertical', right: 0, top: 20, bottom: 20 },
+        color: AccApp.colors,
+        series: [{
+            type: 'pie',
+            radius: ['35%', '70%'],
+            center: ['40%', '50%'],
+            label: { formatter: '{b}\n{d}%' },
+            data: dist.map(x => ({ name: x.name, value: x.count }))
+        }]
+    });
+    chart('chart_bar').setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: 100, right: 30, top: 20, bottom: 30 },
+        xAxis: { type: 'value' },
+        yAxis: { type: 'category', data: dist.map(x => x.name).reverse() },
+        series: [{
+            type: 'bar',
+            data: dist.map(x => x.count).reverse(),
+            itemStyle: { color: '#1f4e79' },
+            label: { show: true, position: 'right' }
+        }]
+    });
+
+    const t = await AccApp.fetchJSON(`/api/dashboard/trend?months=${m}`);
+    chart('chart_trend').setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['事故数', '死亡', '受伤'], top: 0 },
+        grid: { left: 50, right: 30, top: 40, bottom: 40 },
+        xAxis: { type: 'category', data: t.months, axisLabel: { rotate: 30 } },
+        yAxis: { type: 'value' },
+        series: [
+            { name: '事故数', type: 'line', smooth: true, data: t.counts, areaStyle: { opacity: 0.2 }, itemStyle: { color: '#1f4e79' }, lineStyle: { width: 3 } },
+            { name: '死亡', type: 'line', smooth: true, data: t.deaths, itemStyle: { color: '#c0392b' } },
+            { name: '受伤', type: 'line', smooth: true, data: t.injuries, itemStyle: { color: '#e67e22' } },
+        ]
+    });
+
+    const heat = await AccApp.fetchJSON(`/api/dashboard/heatmap?months=${m}`);
+    const hours = Array.from({ length: 24 }, (_, i) => i + '时');
+    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    chart('chart_heatmap').setOption({
+        tooltip: { position: 'top', formatter: p => `${days[p.value[1]]} ${hours[p.value[0]]}: ${p.value[2]} 起` },
+        grid: { left: 50, right: 30, top: 30, bottom: 60 },
+        xAxis: { type: 'category', data: hours, splitArea: { show: true } },
+        yAxis: { type: 'category', data: days, splitArea: { show: true } },
+        visualMap: { min: 0, max: heat.max || 1, calculable: true, orient: 'horizontal', left: 'center', bottom: 5, inRange: { color: ['#e8f4fd', '#1f4e79', '#c0392b'] } },
+        series: [{ type: 'heatmap', data: heat.data }]
+    });
+
+    const roads = await AccApp.fetchJSON(`/api/dashboard/top-roads?months=${m}&limit=15`);
+    chart('chart_road').setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { data: ['事故数', '死亡', '受伤'], top: 0 },
+        grid: { left: 110, right: 40, top: 35, bottom: 25 },
+        xAxis: { type: 'value' },
+        yAxis: { type: 'category', data: roads.map(x => x.name).reverse() },
+        series: [
+            { name: '事故数', type: 'bar', data: roads.map(x => x.count).reverse(), itemStyle: { color: '#1f4e79' }, label: { show: true, position: 'right' } },
+            { name: '死亡', type: 'bar', data: roads.map(x => x.deaths).reverse(), itemStyle: { color: '#c0392b' } },
+            { name: '受伤', type: 'bar', data: roads.map(x => x.injuries).reverse(), itemStyle: { color: '#e67e22' } },
+        ]
+    });
+}
+
+document.getElementById('periodSelect').addEventListener('change', loadAll);
+document.getElementById('dimSelect').addEventListener('change', loadAll);
+loadAll();
+</script>
+{% endblock %}
