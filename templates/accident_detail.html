@@ -93,8 +93,39 @@
     </table>
     {% else %}<div class="empty">未登记人员</div>{% endif %}
 
+    {% set photos = acc.photos | from_json %}
+    {% if photos %}
+    <div class="section-divider">七、现场照片 ({{ photos | length }})</div>
+    <div class="photo-grid">
+        {% for p in photos %}
+        <a class="photo-item" href="{{ url_for('uploaded_file', acc_id=acc.id, name=p) }}" target="_blank">
+            <img src="{{ url_for('uploaded_file', acc_id=acc.id, name=p) }}" alt="">
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="text-light" style="margin-top:14px;font-size:12px;">
         创建时间：{{ acc.created_at }} &nbsp;&nbsp; 最后修改：{{ acc.updated_at }}
     </div>
 </div>
+
+<style>
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+}
+.photo-item {
+    aspect-ratio: 1;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #f8f9fb;
+    display: block;
+}
+.photo-item img { width: 100%; height: 100%; object-fit: cover; transition: transform .2s; }
+.photo-item:hover img { transform: scale(1.05); }
+</style>
 {% endblock %}

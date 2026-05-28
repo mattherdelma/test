@@ -53,6 +53,7 @@
             <label>&nbsp;</label>
             <a class="btn btn-success" href="{{ url_for('export_excel', **filters) }}">导出 Excel</a>
             {% if current_user.role in ['admin','recorder'] %}
+                <a class="btn btn-warn" href="{{ url_for('import_page') }}">批量导入</a>
                 <a class="btn" href="{{ url_for('accident_new') }}">＋ 新增</a>
             {% endif %}
         </div>

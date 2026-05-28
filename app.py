@@ -1,6 +1,9 @@
 """道路交通事故统计与可视化分析系统 - 主程序"""
 import os
+import io
+import sys
 import json
+import uuid
 import shutil
 import webbrowser
 import threading
@@ -8,23 +11,46 @@ from datetime import datetime, timedelta
 from functools import wraps
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
-    flash, jsonify, send_file, abort
+    flash, jsonify, send_file, send_from_directory, abort
 )
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
 from database import (
     init_db, get_db, DB_PATH, DB_DIR,
     get_dict_options, get_all_dicts, log_action,
 )
-from report_generator import export_accidents_excel, export_monthly_report_docx
+from report_generator import (
+    export_accidents_excel, export_monthly_report_docx,
+    build_import_template, parse_import_file,
+)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 打包后：资源 (templates/static) 在 _MEIPASS，可写目录 (data/uploads/backup) 在 exe 旁
+if getattr(sys, 'frozen', False):
+    RES_DIR = sys._MEIPASS
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    RES_DIR = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR = RES_DIR
+
 UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
 BACKUP_DIR = os.path.join(BASE_DIR, 'backup')
 
-app = Flask(__name__)
+app = Flask(__name__,
+            template_folder=os.path.join(RES_DIR, 'templates'),
+            static_folder=os.path.join(RES_DIR, 'static'))
 app.secret_key = 'traffic-accident-local-app-secret-key-change-me'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
+
+@app.template_filter('from_json')
+def _from_json(v):
+    if not v:
+        return []
+    try:
+        return json.loads(v)
+    except Exception:
+        return []
 
 
 # ============ 工具 ============
@@ -249,6 +275,46 @@ def api_casualty():
             GROUP BY level
         ''', (start,)).fetchall()
     return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/dashboard/map')
+@login_required
+def api_map():
+    """事故地理分布：散点 + 中心点 + 边界"""
+    months = int(request.args.get('months', 12))
+    start = (datetime.now() - timedelta(days=30 * months)).strftime('%Y-%m-%d 00:00')
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT id, accident_no, occur_time, level, type,
+                   road_name, road_section, district,
+                   longitude, latitude, death_count, injury_count
+            FROM accidents
+            WHERE occur_time>=? AND longitude IS NOT NULL AND latitude IS NOT NULL
+                  AND longitude > 0 AND latitude > 0
+            ORDER BY occur_time DESC LIMIT 5000
+        ''', (start,)).fetchall()
+    points = []
+    sum_lon, sum_lat = 0.0, 0.0
+    for r in rows:
+        points.append({
+            'id': r['id'],
+            'name': f"{r['accident_no']} {r['road_name'] or ''}",
+            'value': [r['longitude'], r['latitude'], (r['death_count'] or 0) * 10 + (r['injury_count'] or 0) + 1],
+            'level': r['level'] or '',
+            'type': r['type'] or '',
+            'occur_time': r['occur_time'],
+            'death': r['death_count'] or 0,
+            'injury': r['injury_count'] or 0,
+            'road': f"{r['district'] or ''} {r['road_name'] or ''} {r['road_section'] or ''}",
+        })
+        sum_lon += r['longitude']
+        sum_lat += r['latitude']
+    n = len(points) or 1
+    return jsonify({
+        'points': points,
+        'center': [sum_lon / n, sum_lat / n] if points else [104, 35],
+        'count': len(points),
+    })
 
 
 # ============ 事故列表 ============
@@ -591,6 +657,158 @@ def export_report():
         buf, as_attachment=True, download_name=fname,
         mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
+
+
+# ============ 图片附件 ============
+
+ALLOWED_IMG_EXT = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+
+
+def _photos_list(acc_row):
+    try:
+        return json.loads(acc_row['photos']) if acc_row['photos'] else []
+    except Exception:
+        return []
+
+
+@app.route('/accidents/<int:acc_id>/photos', methods=['POST'])
+@role_required('admin', 'recorder')
+def photo_upload(acc_id):
+    with get_db() as conn:
+        acc = conn.execute('SELECT id, photos FROM accidents WHERE id=?', (acc_id,)).fetchone()
+        if not acc:
+            return jsonify({'ok': False, 'msg': '事故不存在'}), 404
+        photos = _photos_list(acc)
+        if len(photos) >= 10:
+            return jsonify({'ok': False, 'msg': '每条事故最多 10 张图片'}), 400
+        files = request.files.getlist('photos')
+        added = []
+        for f in files:
+            if not f or not f.filename:
+                continue
+            ext = os.path.splitext(f.filename)[1].lower()
+            if ext not in ALLOWED_IMG_EXT:
+                continue
+            if len(photos) + len(added) >= 10:
+                break
+            sub = os.path.join(UPLOAD_DIR, str(acc_id))
+            os.makedirs(sub, exist_ok=True)
+            new_name = f'{uuid.uuid4().hex}{ext}'
+            f.save(os.path.join(sub, new_name))
+            added.append(new_name)
+        photos.extend(added)
+        conn.execute('UPDATE accidents SET photos=?, updated_at=datetime("now","localtime") WHERE id=?',
+                     (json.dumps(photos), acc_id))
+    log_action(session.get('user_id'), session.get('username'), '上传照片', f'{acc_id} +{len(added)}')
+    return jsonify({'ok': True, 'added': added, 'all': photos})
+
+
+@app.route('/accidents/<int:acc_id>/photos/<name>', methods=['DELETE'])
+@role_required('admin', 'recorder')
+def photo_delete(acc_id, name):
+    name = secure_filename(name)
+    with get_db() as conn:
+        acc = conn.execute('SELECT id, photos FROM accidents WHERE id=?', (acc_id,)).fetchone()
+        if not acc:
+            return jsonify({'ok': False}), 404
+        photos = _photos_list(acc)
+        if name not in photos:
+            return jsonify({'ok': False, 'msg': '照片不存在'}), 404
+        photos.remove(name)
+        conn.execute('UPDATE accidents SET photos=?, updated_at=datetime("now","localtime") WHERE id=?',
+                     (json.dumps(photos), acc_id))
+        try:
+            os.remove(os.path.join(UPLOAD_DIR, str(acc_id), name))
+        except OSError:
+            pass
+    log_action(session.get('user_id'), session.get('username'), '删除照片', f'{acc_id}/{name}')
+    return jsonify({'ok': True, 'all': photos})
+
+
+@app.route('/uploads/<int:acc_id>/<name>')
+@login_required
+def uploaded_file(acc_id, name):
+    name = secure_filename(name)
+    sub = os.path.join(UPLOAD_DIR, str(acc_id))
+    if not os.path.exists(os.path.join(sub, name)):
+        abort(404)
+    return send_from_directory(sub, name)
+
+
+# ============ 批量导入 ============
+
+@app.route('/import', methods=['GET'])
+@role_required('admin', 'recorder')
+def import_page():
+    return render_template('import.html')
+
+
+@app.route('/import/template')
+@role_required('admin', 'recorder')
+def import_template():
+    buf = build_import_template()
+    return send_file(
+        buf, as_attachment=True, download_name='事故批量导入模板.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+
+@app.route('/import/upload', methods=['POST'])
+@role_required('admin', 'recorder')
+def import_upload():
+    f = request.files.get('file')
+    if not f or not f.filename:
+        flash('请选择文件', 'error')
+        return redirect(url_for('import_page'))
+    if not f.filename.lower().endswith(('.xlsx', '.xls')):
+        flash('请上传 Excel 文件 (.xlsx)', 'error')
+        return redirect(url_for('import_page'))
+    try:
+        records, errors = parse_import_file(f.stream)
+    except Exception as e:
+        flash(f'解析失败: {e}', 'error')
+        return redirect(url_for('import_page'))
+
+    ok_count = 0
+    with get_db() as conn:
+        for rec in records:
+            try:
+                if not rec.get('accident_no'):
+                    rec['accident_no'] = f'JT{datetime.now().strftime("%Y%m%d%H%M%S")}{ok_count:03d}'
+                conn.execute('''
+                    INSERT INTO accidents(
+                        accident_no, occur_time, report_time, level, type,
+                        weather, visibility, district, road_name, road_section,
+                        mileage, longitude, latitude, road_type, road_shape, road_condition,
+                        death_count, injury_count, economic_loss,
+                        cause, handle_result, handler, remarks, created_by
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ''', (
+                    rec['accident_no'], rec['occur_time'], rec.get('report_time', ''),
+                    rec.get('level', ''), rec.get('type', ''),
+                    rec.get('weather', ''), rec.get('visibility', ''),
+                    rec.get('district', ''), rec.get('road_name', ''),
+                    rec.get('road_section', ''), rec.get('mileage', ''),
+                    rec.get('longitude', 0) or 0, rec.get('latitude', 0) or 0,
+                    rec.get('road_type', ''), rec.get('road_shape', ''),
+                    rec.get('road_condition', ''),
+                    rec.get('death_count', 0) or 0, rec.get('injury_count', 0) or 0,
+                    rec.get('economic_loss', 0) or 0,
+                    rec.get('cause', ''), rec.get('handle_result', ''),
+                    rec.get('handler', ''), rec.get('remarks', ''),
+                    session.get('user_id'),
+                ))
+                ok_count += 1
+            except Exception as e:
+                errors.append({'row': rec.get('_row'), 'msg': f'写入失败: {e}'})
+
+    log_action(session.get('user_id'), session.get('username'),
+               '批量导入', f'成功 {ok_count} / 失败 {len(errors)}')
+    return render_template('import.html', result={
+        'ok_count': ok_count,
+        'errors': errors,
+        'total': len(records) + (len(errors) - sum(1 for e in errors if 'row' in e and e.get('msg', '').startswith('写入失败'))),
+    })
 
 
 # ============ 用户管理 ============

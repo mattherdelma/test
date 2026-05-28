@@ -1,11 +1,40 @@
-"""导出 Excel 和 Word 月报"""
+"""导出 Excel / Word 月报、导入模板生成与解析"""
 import io
 from datetime import datetime
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.comments import Comment
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+# 批量导入字段映射：(中文列名, 数据库字段, 是否必填, 说明)
+IMPORT_COLUMNS = [
+    ('事故编号', 'accident_no', False, '留空自动生成，如 JT20250101001'),
+    ('发生时间', 'occur_time', True, '格式：2025-01-15 14:30'),
+    ('上报时间', 'report_time', False, '格式同上'),
+    ('事故等级', 'level', False, '轻微事故/一般事故/重大事故/特大事故'),
+    ('事故类型', 'type', False, '追尾/正面碰撞/侧面碰撞/刮擦/翻车/碾压/撞固定物/其他'),
+    ('天气', 'weather', False, '晴/阴/雨/雪/雾/大风'),
+    ('能见度', 'visibility', False, '良好/一般/较差/极差'),
+    ('行政区划', 'district', False, ''),
+    ('道路名称', 'road_name', False, ''),
+    ('路段', 'road_section', False, ''),
+    ('桩号', 'mileage', False, '如 K12+500'),
+    ('经度', 'longitude', False, '数值，如 117.227'),
+    ('纬度', 'latitude', False, '数值，如 31.820'),
+    ('道路类型', 'road_type', False, '高速/国道/省道等'),
+    ('道路线形', 'road_shape', False, '平直/弯道等'),
+    ('路面状况', 'road_condition', False, '干燥/潮湿等'),
+    ('死亡人数', 'death_count', False, '整数，默认 0'),
+    ('受伤人数', 'injury_count', False, '整数，默认 0'),
+    ('直接经济损失', 'economic_loss', False, '数值，单位元'),
+    ('事故原因', 'cause', False, ''),
+    ('处理结果', 'handle_result', False, '已结案/调解中等'),
+    ('处理民警', 'handler', False, ''),
+    ('备注', 'remarks', False, ''),
+]
 
 
 def export_accidents_excel(rows):
@@ -184,3 +213,122 @@ def export_monthly_report_docx(year, month, summary, top_roads, type_dist, cause
     doc.save(buf)
     buf.seek(0)
     return buf
+
+
+# ============ 批量导入 ============
+
+def build_import_template():
+    """生成批量导入 Excel 模板（带表头、说明、示例行）"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = '事故数据'
+    headers = [c[0] for c in IMPORT_COLUMNS]
+    ws.append(headers)
+
+    head_fill = PatternFill('solid', fgColor='1f4e79')
+    head_font = Font(bold=True, color='FFFFFF', size=11)
+    req_fill = PatternFill('solid', fgColor='c0392b')
+    thin = Side(border_style='thin', color='cccccc')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    for i, c in enumerate(ws[1], 1):
+        c.fill = req_fill if IMPORT_COLUMNS[i - 1][2] else head_fill
+        c.font = head_font
+        c.alignment = Alignment(horizontal='center', vertical='center')
+        c.border = border
+        desc = IMPORT_COLUMNS[i - 1][3]
+        if desc:
+            c.comment = Comment(desc, '系统')
+        ws.column_dimensions[get_column_letter(i)].width = max(12, len(IMPORT_COLUMNS[i - 1][0]) * 2 + 2)
+    ws.row_dimensions[1].height = 26
+
+    # 示例行
+    ws.append([
+        '', '2025-05-20 14:30', '2025-05-20 15:00',
+        '一般事故', '追尾', '晴', '良好',
+        '高新区', '人民路', '中段', 'K12+500',
+        117.227, 31.820, '城市主干道', '平直', '干燥',
+        0, 2, 8000.00,
+        '未保持安全距离', '已结案', '王警官', '示例数据，请删除',
+    ])
+
+    # 说明 sheet
+    ws2 = wb.create_sheet('填写说明')
+    ws2.append(['列名', '是否必填', '说明'])
+    for c in ws2[1]:
+        c.fill = head_fill
+        c.font = head_font
+        c.alignment = Alignment(horizontal='center', vertical='center')
+    for col in IMPORT_COLUMNS:
+        ws2.append([col[0], '是' if col[2] else '否', col[3]])
+    ws2.column_dimensions['A'].width = 16
+    ws2.column_dimensions['B'].width = 10
+    ws2.column_dimensions['C'].width = 60
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+def _parse_dt(v):
+    if v is None or v == '':
+        return ''
+    if isinstance(v, datetime):
+        return v.strftime('%Y-%m-%d %H:%M')
+    s = str(v).strip()
+    for fmt in ('%Y-%m-%d %H:%M', '%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M', '%Y-%m-%d', '%Y/%m/%d'):
+        try:
+            return datetime.strptime(s, fmt).strftime('%Y-%m-%d %H:%M')
+        except ValueError:
+            continue
+    raise ValueError(f'无法识别的时间格式: {s}')
+
+
+def parse_import_file(stream):
+    """解析批量导入 Excel，返回 (records, errors)"""
+    wb = load_workbook(stream, data_only=True, read_only=True)
+    ws = wb[wb.sheetnames[0]]
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        return [], [{'row': 0, 'msg': '文件为空'}]
+    header = [str(h).strip() if h else '' for h in rows[0]]
+    name_to_field = {c[0]: c[1] for c in IMPORT_COLUMNS}
+    required = {c[1] for c in IMPORT_COLUMNS if c[2]}
+    # 列下标 -> 字段
+    col_map = {}
+    for i, name in enumerate(header):
+        if name in name_to_field:
+            col_map[i] = name_to_field[name]
+
+    if not col_map:
+        return [], [{'row': 1, 'msg': '未识别到任何已知列，请使用标准模板'}]
+
+    records = []
+    errors = []
+    for ridx, row in enumerate(rows[1:], start=2):
+        if not any(c not in (None, '') for c in row):
+            continue
+        rec = {'_row': ridx}
+        try:
+            for i, v in enumerate(row):
+                if i not in col_map:
+                    continue
+                field = col_map[i]
+                if v is None or v == '':
+                    continue
+                if field in ('death_count', 'injury_count'):
+                    rec[field] = int(float(v))
+                elif field in ('economic_loss', 'longitude', 'latitude'):
+                    rec[field] = float(v)
+                elif field in ('occur_time', 'report_time'):
+                    rec[field] = _parse_dt(v)
+                else:
+                    rec[field] = str(v).strip()
+            missing = [c[0] for c in IMPORT_COLUMNS if c[2] and not rec.get(c[1])]
+            if missing:
+                errors.append({'row': ridx, 'msg': f'缺少必填列: {", ".join(missing)}'})
+                continue
+            records.append(rec)
+        except Exception as e:
+            errors.append({'row': ridx, 'msg': f'数据格式错误: {e}'})
+    return records, errors

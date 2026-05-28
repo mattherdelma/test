@@ -272,11 +272,72 @@
     </table>
 </div>
 
+</form>
+
+{% if acc %}
+<div class="card">
+    <div class="section-divider flex-between">
+        <span>七、现场照片 <span class="text-light" style="font-size:12px;font-weight:normal;">(最多 10 张，单张 ≤ 5MB)</span></span>
+        <label class="btn btn-sm" style="margin:0;">
+            ＋ 上传照片
+            <input type="file" id="photoInput" multiple accept="image/*" style="display:none;">
+        </label>
+    </div>
+    <div id="photoGrid" class="photo-grid">
+        {% set existing = (acc.photos | from_json) if acc.photos else [] %}
+        {% for p in existing %}
+        <div class="photo-item" data-name="{{ p }}">
+            <a href="{{ url_for('uploaded_file', acc_id=acc.id, name=p) }}" target="_blank">
+                <img src="{{ url_for('uploaded_file', acc_id=acc.id, name=p) }}" alt="">
+            </a>
+            <button type="button" class="photo-del" onclick="delPhoto('{{ p }}', this)">×</button>
+        </div>
+        {% endfor %}
+    </div>
+    <div id="photoEmpty" class="empty" {% if existing %}style="display:none;"{% endif %}>暂无照片，点击右上角"上传照片"</div>
+</div>
+{% else %}
+<div class="card text-light" style="text-align:center;font-size:13px;">
+    保存事故后，编辑页可上传现场照片
+</div>
+{% endif %}
+
 <div class="card" style="text-align:center;">
-    <button class="btn" type="submit" style="padding:8px 30px;">保存</button>
+    <button class="btn" type="submit" form="accForm" style="padding:8px 30px;">保存</button>
     <a class="btn btn-default" href="{{ url_for('accident_list') }}" style="padding:8px 30px;">取消</a>
 </div>
-</form>
+
+<style>
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+}
+.photo-item {
+    position: relative;
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #f8f9fb;
+}
+.photo-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-del {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(192, 57, 43, 0.85);
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+.photo-del:hover { background: var(--danger); }
+</style>
 
 <script>
 const DICTS = {{ dicts | tojson }};
@@ -326,6 +387,53 @@ function removeRow(btn) {
 {% if not acc %}
 addVehicle();
 addPerson();
+{% endif %}
+
+{% if acc %}
+const ACC_ID = {{ acc.id }};
+const photoInput = document.getElementById('photoInput');
+if (photoInput) {
+    photoInput.addEventListener('change', async function() {
+        if (!this.files.length) return;
+        const fd = new FormData();
+        for (const f of this.files) {
+            if (f.size > 5 * 1024 * 1024) {
+                alert(`${f.name} 超过 5MB`);
+                continue;
+            }
+            fd.append('photos', f);
+        }
+        const r = await fetch(`/accidents/${ACC_ID}/photos`, { method: 'POST', body: fd });
+        const j = await r.json();
+        if (!j.ok) { alert(j.msg || '上传失败'); return; }
+        for (const name of j.added) {
+            addPhotoCard(name);
+        }
+        document.getElementById('photoEmpty').style.display = j.all.length ? 'none' : '';
+        this.value = '';
+    });
+}
+
+function addPhotoCard(name) {
+    const url = `/uploads/${ACC_ID}/${name}`;
+    const div = document.createElement('div');
+    div.className = 'photo-item';
+    div.dataset.name = name;
+    div.innerHTML = `
+        <a href="${url}" target="_blank"><img src="${url}" alt=""></a>
+        <button type="button" class="photo-del" onclick="delPhoto('${name}', this)">×</button>
+    `;
+    document.getElementById('photoGrid').appendChild(div);
+}
+
+async function delPhoto(name, btn) {
+    if (!confirm('删除这张照片？')) return;
+    const r = await fetch(`/accidents/${ACC_ID}/photos/${name}`, { method: 'DELETE' });
+    const j = await r.json();
+    if (!j.ok) { alert(j.msg || '删除失败'); return; }
+    btn.closest('.photo-item').remove();
+    document.getElementById('photoEmpty').style.display = j.all.length ? 'none' : '';
+}
 {% endif %}
 </script>
 {% endblock %}

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}批量导入 - {{ super() }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('accident_list') }}">事故台账</a> · <b>批量导入</b>{% endblock %}
+
+{% block content %}
+<div class="chart-grid">
+    <div>
+        <div class="card">
+            <div class="card-title">第一步：下载模板</div>
+            <p class="text-light" style="margin-bottom:12px;">
+                请先下载标准模板，按列填写数据后上传。
+                <span class="tag tag-danger">红色表头</span> 为必填列。
+            </p>
+            <a class="btn btn-success" href="{{ url_for('import_template') }}">下载 Excel 模板</a>
+        </div>
+
+        <div class="card">
+            <div class="card-title">第二步：上传 Excel</div>
+            <form method="post" action="{{ url_for('import_upload') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+                </div>
+                <button type="submit" class="btn">开始导入</button>
+                <a href="{{ url_for('accident_list') }}" class="btn btn-default">返回台账</a>
+            </form>
+            <p class="text-light" style="margin-top:14px;font-size:12px;">
+                · 文件大小不超过 50MB<br>
+                · 单次建议不超过 5000 行<br>
+                · 涉事车辆与人员暂不支持批量导入，请录入后单独补充<br>
+                · 失败的行不影响成功的行
+            </p>
+        </div>
+    </div>
+
+    <div>
+        {% if result %}
+        <div class="card">
+            <div class="card-title">导入结果</div>
+            <div class="kpi-grid" style="margin-bottom:14px;">
+                <div class="kpi-card info">
+                    <div class="kpi-label">成功导入</div>
+                    <div class="kpi-value">{{ result.ok_count }}<span class="kpi-unit">条</span></div>
+                </div>
+                <div class="kpi-card danger">
+                    <div class="kpi-label">失败行数</div>
+                    <div class="kpi-value">{{ result.errors | length }}<span class="kpi-unit">条</span></div>
+                </div>
+            </div>
+            {% if result.errors %}
+            <div class="section-divider">失败明细</div>
+            <table class="table">
+                <thead><tr><th width="80" class="center">行号</th><th>错误信息</th></tr></thead>
+                <tbody>
+                    {% for e in result.errors %}
+                    <tr><td class="center">{{ e.row or '-' }}</td><td class="text-danger">{{ e.msg }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty text-success" style="font-size:14px;">全部导入成功！</div>
+            {% endif %}
+            <div style="margin-top:14px;">
+                <a class="btn btn-success" href="{{ url_for('accident_list') }}">查看台账</a>
+            </div>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="card-title">字段说明（节选）</div>
+            <table class="table">
+                <thead><tr><th>列名</th><th class="center">必填</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td>事故编号</td><td class="center">否</td><td>留空自动生成</td></tr>
+                    <tr><td><b class="text-danger">发生时间</b></td><td class="center"><span class="tag tag-danger">是</span></td><td>2025-05-20 14:30 或 2025/05/20 14:30</td></tr>
+                    <tr><td>事故等级</td><td class="center">否</td><td>轻微事故 / 一般事故 / 重大事故 / 特大事故</td></tr>
+                    <tr><td>经度 / 纬度</td><td class="center">否</td><td>纯数字（地图显示需要）</td></tr>
+                    <tr><td>死亡 / 受伤人数</td><td class="center">否</td><td>整数，默认 0</td></tr>
+                    <tr><td>直接经济损失</td><td class="center">否</td><td>数字，单位元</td></tr>
+                </tbody>
+            </table>
+            <p class="text-light" style="margin-top:10px;font-size:12px;">完整字段说明见模板内"填写说明"工作表。</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

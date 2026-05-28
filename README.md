@@ -18,13 +18,37 @@
 
 | 模块 | 说明 |
 |---|---|
-| 数据驾驶舱 | KPI 卡 + 9 张图表（趋势、类型、原因、TOP路段、时段热力图、辖区分布等） |
-| 事故台账 | 列表 + 多条件筛选 + 详情 + Excel 导出 |
-| 事故录入 | 表单录入，下拉字典减少错填，支持多辆车 / 多人员 |
+| 数据驾驶舱 | KPI 卡 + 9 张图表 + **地理分布地图**（全国/各省切换） |
+| 事故台账 | 列表 + 多条件筛选 + 详情 + Excel 导出 + **批量导入** |
+| 事故录入 | 表单录入，下拉字典减少错填，支持多辆车 / 多人员 / **现场照片上传** |
 | 统计分析 | 可切换维度的交叉分析（类型 / 等级 / 原因 / 天气 / 道路 / 路面 / 辖区） |
 | 字典维护 | 13 类下拉项可在线增加（路段、类型、原因等） |
 | 用户与日志 | 用户管理、操作日志、数据备份 |
 | 报表导出 | 一键导出 Word 月报（含同比、TOP路段、原因分析、重大事故清单、工作建议） |
+
+### 关于地图
+
+- 内置 32 份地图数据（全国 + 31 个省级行政区，完全离线）
+- 支持鼠标拖动平移、滚轮缩放
+- 不同等级事故点用不同颜色（绿/黄/橙/红）
+- 圆圈大小反映死伤严重程度
+- 悬停查看事故详情
+
+### 关于现场照片
+
+- 在事故详情页或编辑页上传
+- 单条事故最多 10 张图片，单张 ≤ 5MB
+- 支持 JPG / PNG / GIF / BMP / WEBP
+- 图片文件存储在 `uploads/<事故ID>/` 目录
+- 数据库只存文件名，库不膨胀
+
+### 关于批量导入
+
+- 事故台账页 → 「批量导入」按钮
+- 先下载标准 Excel 模板，按格式填写
+- 上传后逐行解析，单行失败不影响其他行
+- 显示成功 / 失败统计 + 失败行明细
+- 涉事车辆 / 人员暂不支持批量导入
 
 ## 三、目录结构
 
@@ -33,17 +57,25 @@
 ├─ app.py                  Flask 主程序（含全部路由和 API）
 ├─ database.py             数据库初始化与连接
 ├─ seed_data.py            演示数据生成（3 年共约 1500 条）
-├─ report_generator.py     Excel / Word 报表生成
+├─ report_generator.py     Excel / Word 报表生成 + 批量导入解析
 ├─ download_libs.py        前端依赖（ECharts）下载脚本
+├─ build_exe.py            打包 EXE 脚本
 ├─ run.bat                 Windows 一键启动
+├─ build.bat               Windows 一键打包
 ├─ requirements.txt
 ├─ static/
 │  ├─ css/style.css
-│  └─ js/{echarts.min.js, common.js}
-├─ templates/              页面模板
+│  └─ js/
+│     ├─ echarts.min.js    可视化库（1MB）
+│     ├─ common.js
+│     └─ maps/             地图数据（32 个文件，3.3MB）
+│        ├─ china.json
+│        ├─ china-cities.json
+│        └─ province/      31 个省级行政区
+├─ templates/              9 个页面模板
 ├─ data/accidents.db       SQLite 数据库
 ├─ backup/                 自动备份（保留 30 天）
-└─ uploads/                附件目录（预留）
+└─ uploads/<事故ID>/       现场照片
 ```
 
 ## 四、数据库表
@@ -67,14 +99,26 @@
 
 ## 六、打包成 EXE（可选）
 
-如需脱离 Python 环境分发：
+无需手动写命令，直接双击 **build.bat** 即可：
 
-```bash
-pip install pyinstaller
-pyinstaller -F -w --add-data "templates;templates" --add-data "static;static" --add-data "data;data" --hidden-import openpyxl --hidden-import docx app.py
+```
+build.bat
 ```
 
-生成的 `dist/app.exe` 可直接拷贝运行（首次仍会创建 `data/` 数据库）。
+或在命令行：
+
+```
+python build_exe.py
+```
+
+脚本会自动完成：安装 PyInstaller → 检查 ECharts 文件 → 清理旧产物 → 打包 → 生成 `dist/道路交通事故统计与可视化分析系统.exe`（约 30MB 单文件）+ `dist/使用说明.txt`。
+
+**打包后的运行说明**：
+
+- 双击 exe 启动，浏览器自动打开
+- 首次运行会在 exe 同目录下自动创建 `data/`（数据库）、`uploads/`（照片）、`backup/`（自动备份）
+- 把 exe + 这三个目录一起分发即可
+- exe 启动较慢（约 5-10 秒，PyInstaller 单文件需解压），正常现象
 
 ## 七、常见问题
 

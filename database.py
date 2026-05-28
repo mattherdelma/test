@@ -1,9 +1,16 @@
 import os
+import sys
 import sqlite3
 from contextlib import contextmanager
 from werkzeug.security import generate_password_hash
 
-DB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+# 数据目录：打包后放在 exe 旁；开发时放在项目下
+if getattr(sys, 'frozen', False):
+    _APP_BASE = os.path.dirname(sys.executable)
+else:
+    _APP_BASE = os.path.dirname(os.path.abspath(__file__))
+
+DB_DIR = os.path.join(_APP_BASE, 'data')
 DB_PATH = os.path.join(DB_DIR, 'accidents.db')
 
 SCHEMA = """

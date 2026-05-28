@@ -81,15 +81,18 @@ def seed(n_per_year=500, years=3):
                 road = random.choice(ROADS)
                 acc_no = f'JT{occur_time.strftime("%Y%m%d")}{seq:04d}'
                 seq += 1
+                # 演示数据经纬度：合肥及周边 (经度 117.0-117.6, 纬度 31.6-32.1)
+                lon = round(117.0 + random.random() * 0.6, 6)
+                lat = round(31.6 + random.random() * 0.5, 6)
 
                 cur = conn.execute('''
                     INSERT INTO accidents(
                         accident_no, occur_time, report_time, level, type,
                         weather, visibility, district, road_name, road_section,
-                        mileage, road_type, road_shape, road_condition,
+                        mileage, longitude, latitude, road_type, road_shape, road_condition,
                         death_count, injury_count, economic_loss,
                         cause, handle_result, handler, remarks, created_by
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ''', (
                     acc_no,
                     occur_time.strftime('%Y-%m-%d %H:%M'),
@@ -102,6 +105,7 @@ def seed(n_per_year=500, years=3):
                     road[0],
                     f'{random.randint(1, 30)}号段',
                     f'K{random.randint(1, 200)}+{random.randint(0, 900)}',
+                    lon, lat,
                     road[1],
                     random.choice(DEFAULT_DICTS['road_shape']),
                     random.choices(DEFAULT_DICTS['road_condition'], weights=[55, 20, 10, 5, 5, 5])[0],

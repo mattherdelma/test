@@ -42,6 +42,50 @@
     </div>
 </div>
 
+<div class="card">
+    <div class="card-title">
+        事故地理分布
+        <span class="extra">
+            <span id="map_status">加载中…</span>
+            <select id="mapSelect" class="form-control" style="display:inline-block;width:auto;font-size:12px;padding:3px 8px;margin-left:10px;">
+                <option value="china">全国</option>
+                <option value="anhui" selected>安徽省</option>
+                <option value="jiangsu">江苏省</option>
+                <option value="zhejiang">浙江省</option>
+                <option value="shanghai">上海市</option>
+                <option value="beijing">北京市</option>
+                <option value="guangdong">广东省</option>
+                <option value="sichuan">四川省</option>
+                <option value="shandong">山东省</option>
+                <option value="henan">河南省</option>
+                <option value="hubei">湖北省</option>
+                <option value="hunan">湖南省</option>
+                <option value="fujian">福建省</option>
+                <option value="jiangxi">江西省</option>
+                <option value="shanxi">山西省</option>
+                <option value="shaanxi">陕西省</option>
+                <option value="hebei">河北省</option>
+                <option value="liaoning">辽宁省</option>
+                <option value="jilin">吉林省</option>
+                <option value="heilongjiang">黑龙江省</option>
+                <option value="chongqing">重庆市</option>
+                <option value="tianjin">天津市</option>
+                <option value="gansu">甘肃省</option>
+                <option value="qinghai">青海省</option>
+                <option value="yunnan">云南省</option>
+                <option value="guizhou">贵州省</option>
+                <option value="hainan">海南省</option>
+                <option value="neimenggu">内蒙古</option>
+                <option value="ningxia">宁夏</option>
+                <option value="xinjiang">新疆</option>
+                <option value="xizang">西藏</option>
+                <option value="guangxi">广西</option>
+            </select>
+        </span>
+    </div>
+    <div id="chart_map" style="height:480px;"></div>
+</div>
+
 <div class="chart-grid">
     <div class="card">
         <div class="card-title">事故月度趋势 <span class="extra">数量 / 死亡 / 受伤</span></div>
@@ -99,6 +143,116 @@ function chart(id) {
     return charts[id];
 }
 window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
+
+const MAP_FILE = {
+    'china': 'china.json',
+    'anhui': 'province/anhui.json',
+    'jiangsu': 'province/jiangsu.json',
+    'zhejiang': 'province/zhejiang.json',
+    'shanghai': 'province/shanghai.json',
+    'beijing': 'province/beijing.json',
+    'guangdong': 'province/guangdong.json',
+    'sichuan': 'province/sichuan.json',
+    'shandong': 'province/shandong.json',
+    'henan': 'province/henan.json',
+    'hubei': 'province/hubei.json',
+    'hunan': 'province/hunan.json',
+    'fujian': 'province/fujian.json',
+    'jiangxi': 'province/jiangxi.json',
+    'shanxi': 'province/shanxi.json',
+    'shaanxi': 'province/shaanxi.json',
+    'hebei': 'province/hebei.json',
+    'liaoning': 'province/liaoning.json',
+    'jilin': 'province/jilin.json',
+    'heilongjiang': 'province/heilongjiang.json',
+    'chongqing': 'province/chongqing.json',
+    'tianjin': 'province/tianjin.json',
+    'gansu': 'province/gansu.json',
+    'qinghai': 'province/qinghai.json',
+    'yunnan': 'province/yunnan.json',
+    'guizhou': 'province/guizhou.json',
+    'hainan': 'province/hainan.json',
+    'neimenggu': 'province/neimenggu.json',
+    'ningxia': 'province/ningxia.json',
+    'xinjiang': 'province/xinjiang.json',
+    'xizang': 'province/xizang.json',
+    'guangxi': 'province/guangxi.json',
+};
+const mapLoaded = {};
+const LEVEL_COLOR = { '轻微事故': '#27ae60', '一般事故': '#f39c12', '重大事故': '#e67e22', '特大事故': '#c0392b' };
+
+async function ensureMap(name) {
+    if (mapLoaded[name]) return name;
+    const url = `/static/js/maps/${MAP_FILE[name]}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`地图文件加载失败: ${url}`);
+    const data = await r.json();
+    echarts.registerMap(name, data);
+    mapLoaded[name] = true;
+    return name;
+}
+
+async function renderMap(months) {
+    const mapKey = document.getElementById('mapSelect').value;
+    const statusEl = document.getElementById('map_status');
+    statusEl.textContent = '地图加载中…';
+    try {
+        await ensureMap(mapKey);
+    } catch (e) {
+        statusEl.innerHTML = '<span style="color:#c0392b;">地图文件未找到</span>';
+        return;
+    }
+    const m = await AccApp.fetchJSON(`/api/dashboard/map?months=${months}`);
+    statusEl.textContent = `共 ${m.count} 个事故点`;
+
+    const series = [];
+    // 分等级散点
+    const groups = {};
+    for (const p of m.points) {
+        (groups[p.level || '其他'] = groups[p.level || '其他'] || []).push(p);
+    }
+    for (const lv in groups) {
+        series.push({
+            name: lv,
+            type: 'scatter',
+            coordinateSystem: 'geo',
+            data: groups[lv],
+            symbolSize: v => Math.min(30, 5 + Math.sqrt(v[2]) * 2.5),
+            itemStyle: { color: LEVEL_COLOR[lv] || '#7f8c8d', opacity: 0.75, borderColor: '#fff', borderWidth: 0.5 },
+            emphasis: { scale: 1.6 },
+        });
+    }
+
+    chart('chart_map').clear();
+    chart('chart_map').setOption({
+        tooltip: {
+            trigger: 'item',
+            formatter: p => {
+                if (p.seriesType !== 'scatter') return p.name || '';
+                const d = p.data;
+                return `<b>${d.name}</b><br/>
+                    时间: ${d.occur_time}<br/>
+                    地点: ${d.road}<br/>
+                    等级: ${d.level} · ${d.type}<br/>
+                    死亡: ${d.death} 人，受伤: ${d.injury} 人`;
+            }
+        },
+        legend: {
+            data: Object.keys(groups),
+            top: 10,
+            textStyle: { fontSize: 12 }
+        },
+        geo: {
+            map: mapKey,
+            roam: true,
+            label: { show: mapKey !== 'china', fontSize: 10, color: '#666' },
+            itemStyle: { areaColor: '#e8f1fa', borderColor: '#7faec9' },
+            emphasis: { itemStyle: { areaColor: '#cbe0f3' }, label: { color: '#1f4e79' } },
+            scaleLimit: { min: 0.5, max: 12 }
+        },
+        series,
+    });
+}
 
 async function loadAll() {
     const months = document.getElementById('periodSelect').value;
@@ -248,7 +402,9 @@ async function loadAll() {
     });
 }
 
-document.getElementById('periodSelect').addEventListener('change', loadAll);
+document.getElementById('periodSelect').addEventListener('change', () => { loadAll(); renderMap(document.getElementById('periodSelect').value); });
+document.getElementById('mapSelect').addEventListener('change', () => renderMap(document.getElementById('periodSelect').value));
 loadAll();
+renderMap(document.getElementById('periodSelect').value);
 </script>
 {% endblock %}
