@@ -3,13 +3,16 @@ import random
 from datetime import datetime, timedelta
 from database import init_db, get_db, DEFAULT_DICTS
 
+# 东海县真实道路（城区主次干道 + 过境国省道 + 高速）
 ROADS = [
-    ('人民路', '城市主干道'), ('建设大道', '城市主干道'), ('解放路', '城市主干道'),
-    ('中山路', '城市主干道'), ('迎宾大道', '城市主干道'), ('育才路', '城市次干道'),
-    ('文化路', '城市次干道'), ('滨河路', '城市次干道'), ('工业大道', '城市次干道'),
-    ('科技路', '城市次干道'), ('G312国道', '国道'), ('G316国道', '国道'),
-    ('S101省道', '省道'), ('S207省道', '省道'), ('京港澳高速', '高速公路'),
-    ('沪昆高速', '高速公路'), ('环城东路', '城市次干道'), ('环城西路', '城市次干道'),
+    ('牛山路', '城市主干道'), ('晶都大道', '城市主干道'), ('富华路', '城市主干道'),
+    ('振兴路', '城市主干道'), ('和平路', '城市主干道'), ('利民路', '城市主干道'),
+    ('海陵路', '城市主干道'), ('东海大道', '城市主干道'), ('人民路', '城市主干道'),
+    ('青年路', '城市次干道'), ('幸福路', '城市次干道'), ('郑庄路', '城市次干道'),
+    ('黄海路', '城市次干道'), ('学院路', '城市次干道'), ('安峰路', '城市次干道'),
+    ('G310国道', '国道'), ('S324省道', '省道'), ('S236省道', '省道'),
+    ('S270省道', '省道'), ('S326省道', '省道'),
+    ('G2京沪高速', '高速公路'), ('G30连霍高速', '高速公路'), ('G1516盐洛高速', '高速公路'),
 ]
 SURNAMES = '赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜'
 GIVEN = '伟芳娜敏静秀丽强磊军洋勇艳杰娟涛明超秀兰霞平刚桂英文华建国春梅志强建华丽华志伟玉兰桂兰玉梅秀珍'
@@ -20,12 +23,17 @@ def rand_name():
 
 
 def rand_plate():
-    cities = '京沪粤鲁苏浙皖闽湘鄂'
-    return random.choice(cities) + chr(random.randint(65, 90)) + ''.join(random.choices('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', k=5))
+    # 连云港车牌为「苏G」，演示数据以本地车牌为主，少量外地车
+    if random.random() < 0.8:
+        prefix = '苏G'
+    else:
+        prefix = random.choice(['苏A', '苏B', '苏C', '鲁Q', '鲁L', '皖N', '京A'])
+    return prefix + ''.join(random.choices('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', k=5))
 
 
 def rand_id_card():
-    base = '34010119' + str(random.randint(1970, 2002)) + str(random.randint(1, 12)).zfill(2) + str(random.randint(1, 28)).zfill(2)
+    # 东海县行政区划代码 320722
+    base = '320722' + str(random.randint(1960, 2002)) + str(random.randint(1, 12)).zfill(2) + str(random.randint(1, 28)).zfill(2)
     return base + ''.join(random.choices('0123456789', k=3)) + random.choice('0123456789X')
 
 
@@ -81,9 +89,14 @@ def seed(n_per_year=500, years=3):
                 road = random.choice(ROADS)
                 acc_no = f'JT{occur_time.strftime("%Y%m%d")}{seq:04d}'
                 seq += 1
-                # 演示数据经纬度：合肥及周边 (经度 117.0-117.6, 纬度 31.6-32.1)
-                lon = round(117.0 + random.random() * 0.6, 6)
-                lat = round(31.6 + random.random() * 0.5, 6)
+                # 演示数据经纬度：落在东海县范围内 (经度 118.45-119.0, 纬度 34.35-34.85)
+                # 约 55% 聚集在县城（牛山/晶都/石榴街道）一带，其余散布各乡镇
+                if random.random() < 0.55:
+                    lon = round(118.72 + random.uniform(-0.06, 0.08), 6)
+                    lat = round(34.54 + random.uniform(-0.05, 0.06), 6)
+                else:
+                    lon = round(118.45 + random.random() * 0.55, 6)
+                    lat = round(34.35 + random.random() * 0.50, 6)
 
                 cur = conn.execute('''
                     INSERT INTO accidents(

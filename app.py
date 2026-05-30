@@ -19,6 +19,7 @@ from werkzeug.utils import secure_filename
 from database import (
     init_db, get_db, DB_PATH, DB_DIR,
     get_dict_options, get_all_dicts, log_action,
+    REGION_NAME, REGION_CENTER,
 )
 from report_generator import (
     export_accidents_excel, export_monthly_report_docx,
@@ -88,6 +89,7 @@ def inject_globals():
             'role': session.get('role'),
         },
         'now': datetime.now,
+        'region_name': REGION_NAME,
     }
 
 
@@ -312,7 +314,7 @@ def api_map():
     n = len(points) or 1
     return jsonify({
         'points': points,
-        'center': [sum_lon / n, sum_lat / n] if points else [104, 35],
+        'center': [sum_lon / n, sum_lat / n] if points else REGION_CENTER,
         'count': len(points),
     })
 

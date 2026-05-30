@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}道路交通事故统计与可视化分析系统{% endblock %}</title>
+    <title>{% block title %}{{ region_name }}道路交通事故统计与可视化分析系统{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
 </head>
@@ -11,8 +11,8 @@
 <div class="layout">
     <aside class="sidebar">
         <div class="sidebar-logo">
-            <span class="icon">▣</span>事故管理系统
-            <small>Traffic Accident Analytics</small>
+            <span class="icon">▣</span>东海县事故管理
+            <small>{{ region_name }} · 交通事故分析</small>
         </div>
         <nav class="sidebar-nav">
             <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">

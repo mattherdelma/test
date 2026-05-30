@@ -47,39 +47,14 @@
         事故地理分布
         <span class="extra">
             <span id="map_status">加载中…</span>
+            <label style="font-size:12px;color:#7f8c8d;margin-left:10px;">
+                <input type="checkbox" id="roadToggle" checked style="vertical-align:middle;"> 显示路网
+            </label>
             <select id="mapSelect" class="form-control" style="display:inline-block;width:auto;font-size:12px;padding:3px 8px;margin-left:10px;">
-                <option value="china">全国</option>
-                <option value="anhui" selected>安徽省</option>
+                <option value="donghai" selected>东海县（街道/乡镇）</option>
+                <option value="lianyungang">连云港市</option>
                 <option value="jiangsu">江苏省</option>
-                <option value="zhejiang">浙江省</option>
-                <option value="shanghai">上海市</option>
-                <option value="beijing">北京市</option>
-                <option value="guangdong">广东省</option>
-                <option value="sichuan">四川省</option>
-                <option value="shandong">山东省</option>
-                <option value="henan">河南省</option>
-                <option value="hubei">湖北省</option>
-                <option value="hunan">湖南省</option>
-                <option value="fujian">福建省</option>
-                <option value="jiangxi">江西省</option>
-                <option value="shanxi">山西省</option>
-                <option value="shaanxi">陕西省</option>
-                <option value="hebei">河北省</option>
-                <option value="liaoning">辽宁省</option>
-                <option value="jilin">吉林省</option>
-                <option value="heilongjiang">黑龙江省</option>
-                <option value="chongqing">重庆市</option>
-                <option value="tianjin">天津市</option>
-                <option value="gansu">甘肃省</option>
-                <option value="qinghai">青海省</option>
-                <option value="yunnan">云南省</option>
-                <option value="guizhou">贵州省</option>
-                <option value="hainan">海南省</option>
-                <option value="neimenggu">内蒙古</option>
-                <option value="ningxia">宁夏</option>
-                <option value="xinjiang">新疆</option>
-                <option value="xizang">西藏</option>
-                <option value="guangxi">广西</option>
+                <option value="china">全国</option>
             </select>
         </span>
     </div>
@@ -145,40 +120,14 @@ function chart(id) {
 window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
 
 const MAP_FILE = {
-    'china': 'china.json',
-    'anhui': 'province/anhui.json',
+    'donghai': 'donghai.json',        // 东海县（含街道/乡镇边界，可由 download_donghai_map.py 升级为真实数据）
+    'lianyungang': 'lianyungang.json',// 连云港市（需运行下载脚本获取）
     'jiangsu': 'province/jiangsu.json',
-    'zhejiang': 'province/zhejiang.json',
-    'shanghai': 'province/shanghai.json',
-    'beijing': 'province/beijing.json',
-    'guangdong': 'province/guangdong.json',
-    'sichuan': 'province/sichuan.json',
-    'shandong': 'province/shandong.json',
-    'henan': 'province/henan.json',
-    'hubei': 'province/hubei.json',
-    'hunan': 'province/hunan.json',
-    'fujian': 'province/fujian.json',
-    'jiangxi': 'province/jiangxi.json',
-    'shanxi': 'province/shanxi.json',
-    'shaanxi': 'province/shaanxi.json',
-    'hebei': 'province/hebei.json',
-    'liaoning': 'province/liaoning.json',
-    'jilin': 'province/jilin.json',
-    'heilongjiang': 'province/heilongjiang.json',
-    'chongqing': 'province/chongqing.json',
-    'tianjin': 'province/tianjin.json',
-    'gansu': 'province/gansu.json',
-    'qinghai': 'province/qinghai.json',
-    'yunnan': 'province/yunnan.json',
-    'guizhou': 'province/guizhou.json',
-    'hainan': 'province/hainan.json',
-    'neimenggu': 'province/neimenggu.json',
-    'ningxia': 'province/ningxia.json',
-    'xinjiang': 'province/xinjiang.json',
-    'xizang': 'province/xizang.json',
-    'guangxi': 'province/guangxi.json',
+    'china': 'china.json',
 };
 const mapLoaded = {};
+let roadsData = null;       // 东海县路网（LineString 集合），延迟加载一次
+let roadsTried = false;
 const LEVEL_COLOR = { '轻微事故': '#27ae60', '一般事故': '#f39c12', '重大事故': '#e67e22', '特大事故': '#c0392b' };
 
 async function ensureMap(name) {
@@ -190,6 +139,30 @@ async function ensureMap(name) {
     echarts.registerMap(name, data);
     mapLoaded[name] = true;
     return name;
+}
+
+// 东海县真实路网（由 download_donghai_map.py 生成）。文件不存在时静默跳过。
+async function loadRoads() {
+    if (roadsTried) return roadsData;
+    roadsTried = true;
+    try {
+        const r = await fetch('/static/js/maps/donghai_roads.json');
+        if (!r.ok) return null;
+        const geo = await r.json();
+        const lines = [];
+        for (const f of (geo.features || [])) {
+            const g = f.geometry || {};
+            if (g.type === 'LineString') {
+                lines.push({ coords: g.coordinates, name: (f.properties || {}).name || '' });
+            } else if (g.type === 'MultiLineString') {
+                for (const seg of g.coordinates) lines.push({ coords: seg, name: (f.properties || {}).name || '' });
+            }
+        }
+        roadsData = lines;
+    } catch (e) {
+        roadsData = null;
+    }
+    return roadsData;
 }
 
 async function renderMap(months) {
@@ -206,6 +179,24 @@ async function renderMap(months) {
     statusEl.textContent = `共 ${m.count} 个事故点`;
 
     const series = [];
+
+    // 路网叠加（仅东海县、勾选「显示路网」且数据文件存在时）
+    if (mapKey === 'donghai' && document.getElementById('roadToggle').checked) {
+        const roads = await loadRoads();
+        if (roads && roads.length) {
+            series.push({
+                name: '路网',
+                type: 'lines',
+                coordinateSystem: 'geo',
+                data: roads,
+                silent: true,
+                lineStyle: { color: '#95a5a6', width: 0.8, opacity: 0.6, curveness: 0 },
+                progressive: 4000,
+                z: 1,
+            });
+        }
+    }
+
     // 分等级散点
     const groups = {};
     for (const p of m.points) {
@@ -404,6 +395,7 @@ async function loadAll() {
 
 document.getElementById('periodSelect').addEventListener('change', () => { loadAll(); renderMap(document.getElementById('periodSelect').value); });
 document.getElementById('mapSelect').addEventListener('change', () => renderMap(document.getElementById('periodSelect').value));
+document.getElementById('roadToggle').addEventListener('change', () => renderMap(document.getElementById('periodSelect').value));
 loadAll();
 renderMap(document.getElementById('periodSelect').value);
 </script>
