@@ -535,6 +535,79 @@ def statistics():
     return render_template('statistics.html', dicts=get_all_dicts())
 
 
+@app.route('/api/statistics')
+@login_required
+def api_statistics():
+    """多维交叉统计，支持按乡镇(district)下钻过滤。"""
+    dim = request.args.get('dim', 'type')
+    allowed = {
+        'type', 'level', 'cause', 'weather', 'road_type',
+        'road_condition', 'district', 'road_name',
+    }
+    if dim not in allowed:
+        dim = 'type'
+    start = request.args.get('start', '')
+    end = request.args.get('end', '')
+    district = request.args.get('district', '').strip()  # 乡镇下钻
+
+    where = [f'{dim} IS NOT NULL', f"{dim} != ''"]
+    params = []
+    if start:
+        where.append('occur_time>=?')
+        params.append(start + ' 00:00')
+    if end:
+        where.append('occur_time<=?')
+        params.append(end + ' 23:59')
+    if district:
+        where.append('district=?')
+        params.append(district)
+    where_sql = ' AND '.join(where)
+
+    # 概况 KPI 的过滤条件（不含 dim 非空约束）
+    kpi_where = ['1=1']
+    kpi_params = []
+    if start:
+        kpi_where.append('occur_time>=?')
+        kpi_params.append(start + ' 00:00')
+    if end:
+        kpi_where.append('occur_time<=?')
+        kpi_params.append(end + ' 23:59')
+    if district:
+        kpi_where.append('district=?')
+        kpi_params.append(district)
+    kpi_where_sql = ' AND '.join(kpi_where)
+
+    with get_db() as conn:
+        items = [dict(r) for r in conn.execute(f'''
+            SELECT {dim} AS name, COUNT(*) AS count,
+                   COALESCE(SUM(death_count),0) AS deaths,
+                   COALESCE(SUM(injury_count),0) AS injuries,
+                   COALESCE(SUM(economic_loss),0) AS loss
+            FROM accidents WHERE {where_sql}
+            GROUP BY {dim} ORDER BY count DESC
+        ''', params).fetchall()]
+        trend = [dict(r) for r in conn.execute(f'''
+            SELECT substr(occur_time,1,7) AS ym, COUNT(*) AS count
+            FROM accidents WHERE {kpi_where_sql}
+            GROUP BY ym ORDER BY ym
+        ''', kpi_params).fetchall()]
+        summary = dict(conn.execute(f'''
+            SELECT COUNT(*) AS total,
+                   COALESCE(SUM(death_count),0) AS deaths,
+                   COALESCE(SUM(injury_count),0) AS injuries,
+                   COALESCE(SUM(economic_loss),0) AS loss
+            FROM accidents WHERE {kpi_where_sql}
+        ''', kpi_params).fetchone())
+
+    return jsonify({
+        'dim': dim,
+        'district': district,
+        'items': items,
+        'trend': trend,
+        'summary': summary,
+    })
+
+
 # ============ 字典管理 ============
 
 @app.route('/dictionaries')

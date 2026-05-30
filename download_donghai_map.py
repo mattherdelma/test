@@ -67,6 +67,16 @@ def _fetch(url, ctx, data=None, timeout=180):
 
 def download_boundary(code, out_name, label):
     out = os.path.join(MAP_DIR, out_name)
+    # 已是真实数据（含多个下级区划）则跳过；占位文件(仅1个feature)会被升级
+    if os.path.exists(out):
+        try:
+            with open(out, encoding='utf-8') as f:
+                exist = json.load(f)
+            if len(exist.get('features', [])) > 1:
+                print(f'[跳过] {label} 边界已存在真实数据: {out_name}')
+                return True
+        except Exception:
+            pass
     url = DATAV.format(code=code)
     try:
         print(f'[下载] {label} 边界: {url}')
@@ -98,6 +108,9 @@ out geom;
 
 def download_roads():
     out = os.path.join(MAP_DIR, 'donghai_roads.json')
+    if os.path.exists(out) and os.path.getsize(out) > 1024:
+        print(f'[跳过] 路网已存在: donghai_roads.json')
+        return True
     query = _overpass_query()
     for ep in OVERPASS_ENDPOINTS:
         try:
