@@ -25,6 +25,11 @@ if not exist "static\js\echarts.min.js" (
     )
 )
 
+if not exist "static\js\maps\donghai_roads.json" (
+    echo [首次运行] 正在获取东海县街道/乡镇边界与真实路网（需联网，失败不影响使用）...
+    python download_donghai_map.py
+)
+
 if not exist ".deps_installed" (
     echo [首次运行] 正在安装 Python 依赖...
     python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple

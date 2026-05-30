@@ -549,6 +549,12 @@ def api_statistics():
     start = request.args.get('start', '')
     end = request.args.get('end', '')
     district = request.args.get('district', '').strip()  # 乡镇下钻
+    months = request.args.get('months', '')
+    if months and not start:
+        try:
+            start = (datetime.now() - timedelta(days=30 * int(months))).strftime('%Y-%m-%d')
+        except ValueError:
+            pass
 
     where = [f'{dim} IS NOT NULL', f"{dim} != ''"]
     params = []
@@ -598,6 +604,20 @@ def api_statistics():
                    COALESCE(SUM(economic_loss),0) AS loss
             FROM accidents WHERE {kpi_where_sql}
         ''', kpi_params).fetchone())
+        heat_rows = conn.execute(
+            f'SELECT occur_time FROM accidents WHERE {kpi_where_sql}', kpi_params
+        ).fetchall()
+
+    # 24小时 × 7星期 热力图（与当前筛选范围一致）
+    matrix = [[0] * 24 for _ in range(7)]
+    for r in heat_rows:
+        try:
+            t = datetime.strptime(r['occur_time'][:16], '%Y-%m-%d %H:%M')
+            matrix[t.weekday()][t.hour] += 1
+        except Exception:
+            continue
+    heatmap = [[h, d, matrix[d][h]] for d in range(7) for h in range(24)]
+    heat_max = max((c for _, _, c in heatmap), default=0)
 
     return jsonify({
         'dim': dim,
@@ -605,6 +625,8 @@ def api_statistics():
         'items': items,
         'trend': trend,
         'summary': summary,
+        'heatmap': heatmap,
+        'heat_max': heat_max,
     })
 
 
