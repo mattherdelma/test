@@ -1,29 +1,36 @@
 @echo off
-chcp 65001 >nul
+REM ==========================================================
+REM  Build single-file EXE (pure ASCII + CRLF on purpose)
+REM ==========================================================
+setlocal
 cd /d "%~dp0"
 
-echo ===================================
-echo  打包为单文件 EXE
-echo ===================================
-echo.
-
+set "PY=python"
 where python >nul 2>nul
 if errorlevel 1 (
-    echo [错误] 未检测到 Python
-    pause
-    exit /b 1
+    where py >nul 2>nul
+    if errorlevel 1 (
+        echo [ERROR] Python not found. Install Python 3.9+ first.
+        pause
+        exit /b 1
+    )
+    set "PY=py"
 )
 
-python -m pip install --quiet -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-python build_exe.py
+echo [STEP] Installing dependencies ...
+%PY% -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+echo [STEP] Building EXE ...
+%PY% build_exe.py
 if errorlevel 1 (
-    echo [错误] 打包失败
+    echo [ERROR] Build failed.
     pause
     exit /b 1
 )
 
 echo.
-echo 打包完成。可执行文件位于 dist\ 目录。
-echo 双击 dist\*.exe 即可使用，无需 Python 环境。
+echo Build finished. The EXE is in the dist\ folder.
+echo Double click dist\*.exe to run, no Python needed.
 echo.
 pause
+endlocal
