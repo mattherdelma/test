@@ -5,9 +5,11 @@
 
     python download_donghai_tiles.py
 
-策略（街道级，约 9 千张瓦片 / 200~300MB）：
+策略（门牌级，约 3.5 万张瓦片 / 约 600MB）：
   · 全县范围      z10–z15   能看到县域、乡镇、主次干道到街道
-  · 县城核心区    z16–z18   牛山/石榴街道一带，能看到小巷、门牌级细节
+  · 县城核心区    z16–z18   牛山/石榴街道一带，能看到小巷
+  · 主城中心      z19–z20   建成区，能看到建筑轮廓、门牌级细节
+    （注：OSM 公共瓦片多数只到 z19，z20 可能部分 404，缺失会自动用低层放大填充，不留白）
 
 瓦片保存为   tiles/{z}/{x}/{y}.png   ，程序通过 /tiles/{z}/{x}/{y}.png 离线读取。
 脚本可断点续传（已存在的瓦片自动跳过），中断后重跑即可继续。
@@ -36,12 +38,14 @@ TILE_URLS = [
     'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
 ]
 
-# 下载范围（西, 南, 东, 北）
+# 下载范围（西, 南, 东, 北）。范围越往高缩放级，框得越小以控制体积。
 COUNTY_BBOX = (118.40, 34.30, 119.08, 34.95)   # 东海县全域
 URBAN_BBOX = (118.69, 34.49, 118.82, 34.59)    # 县城核心区（牛山/石榴街道一带）
+CORE_BBOX = (118.740, 34.528, 118.785, 34.558)  # 主城中心（门牌级，范围最小）
 
-COUNTY_ZOOMS = range(10, 16)   # z10–z15
-URBAN_ZOOMS = range(16, 19)    # z16–z18
+COUNTY_ZOOMS = range(10, 16)   # z10–z15  全县到街道
+URBAN_ZOOMS = range(16, 19)    # z16–z18  县城到小巷
+CORE_ZOOMS = range(19, 21)     # z19–z20  主城建成区到门牌级
 
 REQUEST_INTERVAL = 0.12        # 每张瓦片间隔（秒），对公共瓦片源友好
 TIMEOUT = 30
@@ -149,9 +153,12 @@ def main():
     plan = [
         (COUNTY_BBOX, COUNTY_ZOOMS),
         (URBAN_BBOX, URBAN_ZOOMS),
+        (CORE_BBOX, CORE_ZOOMS),
     ]
-    print('=== 东海县离线地图瓦片下载（街道级）===')
-    print('全县 z10-15 + 县城核心区 z16-18')
+    print('=== 东海县离线地图瓦片下载（门牌级）===')
+    print('全县 z10-15 + 县城 z16-18 + 主城建成区 z19-20(门牌级)')
+    est = count_tiles(plan)
+    print(f'预计约 {est} 张瓦片、约 {est*18//1024} MB')
     done, skipped, failed = download_plan(plan)
     size = dir_size_mb(TILES_DIR)
     print('\n=== 完成 ===')

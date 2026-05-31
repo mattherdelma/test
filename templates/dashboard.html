@@ -137,10 +137,12 @@ function initLeaflet() {
             '<code>python download_libs.py</code> 后重试。</div>';
         return null;
     }
-    lmap = L.map('chart_map', { center: DONGHAI_CENTER, zoom: 11, minZoom: 9, maxZoom: 18, zoomControl: true });
+    lmap = L.map('chart_map', { center: DONGHAI_CENTER, zoom: 11, minZoom: 9, maxZoom: 20, zoomControl: true });
     // 本地离线瓦片；缺失的瓦片自动留白（不报错）
     tileLayer = L.tileLayer('/tiles/{z}/{x}/{y}.png', {
-        minZoom: 9, maxZoom: 18, tileSize: 256,
+        minZoom: 9, maxZoom: 20,
+        // 缺门牌级瓦片时，自动用较低层瓦片放大填充，不留白
+        maxNativeZoom: 19, tileSize: 256,
         attribution: '© OpenStreetMap | 东海县离线底图',
         errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
     }).addTo(lmap);
