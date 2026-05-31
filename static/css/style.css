@@ -69,21 +69,25 @@ a:hover { color: var(--primary-dark); }
     background: linear-gradient(180deg, transparent, rgba(34,211,238,.35), transparent);
 }
 .sidebar-logo {
-    padding: 22px 20px 20px;
+    padding: 20px 20px 18px;
     border-bottom: 1px solid rgba(255,255,255,0.08);
     font-size: 16px;
     font-weight: 700;
     line-height: 1.4;
     letter-spacing: .5px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
-.sidebar-logo .icon {
-    font-size: 20px;
-    margin-right: 8px;
-    color: var(--accent-2);
-    vertical-align: -1px;
-    text-shadow: 0 0 12px rgba(34,211,238,.6);
+.sidebar-logo .logo-img {
+    width: 32px; height: 32px; flex-shrink: 0;
+    filter: drop-shadow(0 0 7px rgba(34,211,238,.45));
 }
-.sidebar-logo small { display: block; font-size: 11px; opacity: 0.62; font-weight: normal; margin-top: 5px; letter-spacing: .4px; }
+.sidebar-logo .icon { font-size: 20px; margin-right: 8px; color: var(--accent-2); vertical-align: -1px; }
+.sidebar-logo small { flex-basis: 100%; font-size: 11px; opacity: 0.6; font-weight: normal; margin-top: 2px; letter-spacing: .4px; }
+
+.sidebar-nav .nav-icon svg { width: 18px; height: 18px; display: block; }
 
 .sidebar-nav { padding: 14px 12px; flex: 1; }
 .sidebar-nav a {
@@ -385,7 +389,13 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 .mt-10 { margin-top: 10px; }
 .flex { display: flex; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
-.empty { padding: 44px 0; text-align: center; color: var(--text-faint); font-size: 13px; }
+.empty { padding: 40px 0; text-align: center; color: var(--text-faint); font-size: 13px; }
+.empty::before {
+    content: ''; display: block;
+    width: 132px; height: 100px; margin: 0 auto 14px;
+    background: url('/static/img/empty.svg') center/contain no-repeat;
+    opacity: .95;
+}
 
 /* ============ 地图选点（事故录入）============ */
 .map-picker { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-soft); }

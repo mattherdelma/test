@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
+  <defs>
+    <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#bfe9f5"/>
+      <stop offset="1" stop-color="#7fd3e8"/>
+    </linearGradient>
+  </defs>
+  <!-- floating squares -->
+  <g fill="#a8e0ee" opacity="0.85">
+    <rect x="84" y="14" width="16" height="16" rx="3" transform="rotate(12 92 22)"/>
+    <rect x="104" y="24" width="11" height="11" rx="2" transform="rotate(-10 109 29)"/>
+    <rect x="70" y="26" width="10" height="10" rx="2" transform="rotate(18 75 31)"/>
+  </g>
+  <!-- folder back -->
+  <path d="M40 44 H66 L74 52 H120 a6 6 0 0 1 6 6 V96 a6 6 0 0 1-6 6 H40 a6 6 0 0 1-6-6 V50 a6 6 0 0 1 6-6 Z" fill="#9bdcec"/>
+  <!-- folder front -->
+  <path d="M34 60 H126 L120 100 a6 6 0 0 1-6 5 H40 a6 6 0 0 1-6-5 Z" fill="url(#fg)"/>
+  <!-- magnifier -->
+  <circle cx="58" cy="74" r="18" fill="none" stroke="#ffffff" stroke-width="5"/>
+  <circle cx="58" cy="74" r="18" fill="#ffffff" opacity="0.25"/>
+  <rect x="40" y="90" width="9" height="22" rx="4" transform="rotate(45 44 100)" fill="#3aa6bd"/>
+</svg>
