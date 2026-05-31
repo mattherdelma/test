@@ -42,8 +42,11 @@ TILES_DIR = os.path.join(BASE_DIR, 'tiles')
 app = Flask(__name__,
             template_folder=os.path.join(RES_DIR, 'templates'),
             static_folder=os.path.join(RES_DIR, 'static'))
-app.secret_key = 'traffic-accident-local-app-secret-key-change-me'
+# 每次启动生成随机密钥：使旧的会话 Cookie 失效，确保每次打开程序都需重新登录
+app.secret_key = os.urandom(32)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+# 会话仅在浏览器进程内有效（非持久 Cookie），关闭后再开即需登录
+app.config['SESSION_PERMANENT'] = False
 
 
 @app.template_filter('from_json')

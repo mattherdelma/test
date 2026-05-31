@@ -1,7 +1,73 @@
 """生成演示数据：默认 3 年共约 1500 条事故记录"""
+import os
+import json
 import random
 from datetime import datetime, timedelta
 from database import init_db, get_db, DEFAULT_DICTS
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_boundary():
+    """读取东海县真实边界(donghai.json)，返回各多边形的外环点列表。"""
+    path = os.path.join(_BASE_DIR, 'static', 'js', 'maps', 'donghai.json')
+    try:
+        d = json.load(open(path, encoding='utf-8'))
+    except Exception:
+        return None
+    rings = []
+    for ft in d.get('features', []):
+        g = ft.get('geometry', {})
+        t, c = g.get('type'), g.get('coordinates', [])
+        if t == 'Polygon' and c:
+            rings.append(c[0])
+        elif t == 'MultiPolygon':
+            for poly in c:
+                if poly:
+                    rings.append(poly[0])
+    return rings or None
+
+
+_BOUNDARY = _load_boundary()
+if _BOUNDARY:
+    _xs = [p[0] for r in _BOUNDARY for p in r]
+    _ys = [p[1] for r in _BOUNDARY for p in r]
+    _BBOX = (min(_xs), min(_ys), max(_xs), max(_ys))
+else:
+    _BBOX = (118.40, 34.30, 119.13, 34.80)
+
+
+def _in_ring(lon, lat, ring):
+    inside = False
+    n = len(ring)
+    j = n - 1
+    for i in range(n):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if ((yi > lat) != (yj > lat)) and (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def _in_boundary(lon, lat):
+    if not _BOUNDARY:
+        return True
+    return any(_in_ring(lon, lat, r) for r in _BOUNDARY)
+
+
+def rand_point():
+    """生成落在东海县边界内的随机经纬度：约 55% 聚集县城，其余散布全县。"""
+    for _ in range(300):
+        if random.random() < 0.55:        # 县城（牛山/晶都/石榴街道）一带
+            lon = 118.752 + random.uniform(-0.05, 0.05)
+            lat = 34.542 + random.uniform(-0.04, 0.05)
+        else:                              # 全县范围散布
+            lon = random.uniform(_BBOX[0], _BBOX[2])
+            lat = random.uniform(_BBOX[1], _BBOX[3])
+        if _in_boundary(lon, lat):
+            return round(lon, 6), round(lat, 6)
+    return 118.752, 34.542                  # 兜底：县城中心
 
 # 东海县真实道路（城区主次干道 + 过境国省道 + 高速）
 ROADS = [
@@ -37,12 +103,31 @@ def rand_id_card():
     return base + ''.join(random.choices('0123456789', k=3)) + random.choice('0123456789X')
 
 
+def relocate_outside_points(conn):
+    """把已有数据中落在县界外的事故点，就近重置为县界内的随机点（仅演示数据用）。"""
+    if not _BOUNDARY:
+        return 0
+    rows = conn.execute('SELECT id, longitude, latitude FROM accidents').fetchall()
+    fixed = 0
+    for r in rows:
+        lon, lat = r['longitude'], r['latitude']
+        if lon is None or lat is None or not _in_boundary(lon, lat):
+            nlon, nlat = rand_point()
+            conn.execute('UPDATE accidents SET longitude=?, latitude=? WHERE id=?', (nlon, nlat, r['id']))
+            fixed += 1
+    return fixed
+
+
 def seed(n_per_year=500, years=3):
     init_db()
     with get_db() as conn:
         cur = conn.execute('SELECT COUNT(*) AS c FROM accidents')
         if cur.fetchone()['c'] > 0:
-            print('已有数据，跳过生成。如需重置请删除 data/accidents.db')
+            fixed = relocate_outside_points(conn)
+            msg = '已有数据，跳过生成。'
+            if fixed:
+                msg += f'已将 {fixed} 个越界事故点移入县界内。'
+            print(msg + '如需重置请删除 data/accidents.db')
             return
 
         today = datetime.now()
@@ -89,14 +174,8 @@ def seed(n_per_year=500, years=3):
                 road = random.choice(ROADS)
                 acc_no = f'JT{occur_time.strftime("%Y%m%d")}{seq:04d}'
                 seq += 1
-                # 演示数据经纬度：落在东海县范围内 (经度 118.45-119.0, 纬度 34.35-34.85)
-                # 约 55% 聚集在县城（牛山/晶都/石榴街道）一带，其余散布各乡镇
-                if random.random() < 0.55:
-                    lon = round(118.72 + random.uniform(-0.06, 0.08), 6)
-                    lat = round(34.54 + random.uniform(-0.05, 0.06), 6)
-                else:
-                    lon = round(118.45 + random.random() * 0.55, 6)
-                    lat = round(34.35 + random.random() * 0.50, 6)
+                # 演示数据经纬度：保证全部落在东海县真实边界内
+                lon, lat = rand_point()
 
                 cur = conn.execute('''
                     INSERT INTO accidents(

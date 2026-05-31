@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#08152e"/>
+      <stop offset="0.55" stop-color="#0a1e3d"/>
+      <stop offset="1" stop-color="#0c2a52"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="62%" r="55%">
+      <stop offset="0" stop-color="#1b6fd6" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#0e3f7e" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#0a1e3d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#13294d"/>
+      <stop offset="1" stop-color="#0a1730"/>
+    </linearGradient>
+    <linearGradient id="lane" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="streakA" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38e1ff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#38e1ff" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="streakB" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff5d73" stop-opacity="0"/>
+      <stop offset="1" stop-color="#ff5d73" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sky -->
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <rect width="1600" height="1000" fill="url(#glow)"/>
+
+  <!-- horizon glow line -->
+  <rect x="0" y="548" width="1600" height="3" fill="#3aa0ff" opacity="0.5"/>
+  <ellipse cx="800" cy="552" rx="520" ry="40" fill="#1b6fd6" opacity="0.35"/>
+
+  <!-- perspective tech grid (ground) -->
+  <g stroke="#2f7fd6" stroke-opacity="0.18" fill="none" stroke-width="1.2">
+    <line x1="-400" y1="1000" x2="740" y2="552"/>
+    <line x1="120" y1="1000" x2="772" y2="552"/>
+    <line x1="640" y1="1000" x2="792" y2="552"/>
+    <line x1="960" y1="1000" x2="808" y2="552"/>
+    <line x1="1480" y1="1000" x2="828" y2="552"/>
+    <line x1="2000" y1="1000" x2="860" y2="552"/>
+    <line x1="0" y1="660" x2="1600" y2="660"/>
+    <line x1="0" y1="760" x2="1600" y2="760"/>
+    <line x1="0" y1="880" x2="1600" y2="880"/>
+  </g>
+
+  <!-- skyline silhouette -->
+  <g fill="#0c2244" opacity="0.85">
+    <rect x="120" y="430" width="46" height="120"/>
+    <rect x="176" y="468" width="34" height="82"/>
+    <rect x="226" y="404" width="40" height="146"/>
+    <rect x="300" y="452" width="30" height="98"/>
+    <rect x="1230" y="446" width="42" height="104"/>
+    <rect x="1284" y="408" width="36" height="142"/>
+    <rect x="1332" y="470" width="30" height="80"/>
+    <rect x="1374" y="430" width="44" height="120"/>
+  </g>
+  <g fill="#1f6fc0" opacity="0.5">
+    <rect x="232" y="404" width="4" height="14"/>
+    <rect x="1290" y="408" width="4" height="14"/>
+  </g>
+
+  <!-- road -->
+  <polygon points="690,552 910,552 1260,1000 340,1000" fill="url(#road)"/>
+  <!-- road edges glow -->
+  <polygon points="690,552 694,552 360,1000 348,1000" fill="#2bb6e8" opacity="0.5"/>
+  <polygon points="906,552 910,552 1252,1000 1240,1000" fill="#2bb6e8" opacity="0.5"/>
+
+  <!-- center dashed lane (glowing) -->
+  <g fill="url(#lane)">
+    <polygon points="797,560 803,560 804,580 796,580"/>
+    <polygon points="795,598 805,598 807,628 793,628"/>
+    <polygon points="792,650 808,650 811,694 789,694"/>
+    <polygon points="788,720 812,720 816,778 784,778"/>
+    <polygon points="783,812 817,812 822,892 778,892"/>
+    <polygon points="776,920 824,920 830,1000 770,1000"/>
+  </g>
+
+  <!-- light streaks -->
+  <rect x="980" y="690" width="220" height="6" rx="3" fill="url(#streakA)" transform="rotate(20 1090 693)"/>
+  <rect x="1040" y="760" width="300" height="7" rx="3" fill="url(#streakA)" transform="rotate(20 1190 763)"/>
+  <rect x="300" y="700" width="220" height="6" rx="3" fill="url(#streakB)" transform="rotate(-20 410 703)" opacity="0.9"/>
+  <rect x="230" y="780" width="300" height="7" rx="3" fill="url(#streakB)" transform="rotate(-20 380 783)" opacity="0.9"/>
+
+  <!-- data nodes / network -->
+  <g stroke="#38e1ff" stroke-opacity="0.35" stroke-width="1">
+    <line x1="220" y1="200" x2="360" y2="150"/>
+    <line x1="360" y1="150" x2="470" y2="240"/>
+    <line x1="470" y1="240" x2="300" y2="300"/>
+    <line x1="1180" y1="180" x2="1320" y2="140"/>
+    <line x1="1320" y1="140" x2="1410" y2="250"/>
+    <line x1="1180" y1="180" x2="1300" y2="280"/>
+  </g>
+  <g fill="#38e1ff">
+    <circle cx="220" cy="200" r="4"/><circle cx="360" cy="150" r="5"/>
+    <circle cx="470" cy="240" r="4"/><circle cx="300" cy="300" r="3.5"/>
+    <circle cx="1180" cy="180" r="4"/><circle cx="1320" cy="140" r="5"/>
+    <circle cx="1410" cy="250" r="4"/><circle cx="1300" cy="280" r="3.5"/>
+  </g>
+  <g fill="#9be8ff" opacity="0.85">
+    <circle cx="360" cy="150" r="2"/><circle cx="1320" cy="140" r="2"/>
+  </g>
+
+  <!-- traffic signal motif -->
+  <g transform="translate(560,300)" opacity="0.9">
+    <rect x="-13" y="-34" width="26" height="74" rx="9" fill="#0c2348" stroke="#1f6fc0" stroke-opacity="0.6"/>
+    <circle cx="0" cy="-20" r="6.5" fill="#ff5d73"/>
+    <circle cx="0" cy="0" r="6.5" fill="#ffd166"/>
+    <circle cx="0" cy="20" r="6.5" fill="#3ddc84"/>
+  </g>
+</svg>
