@@ -328,7 +328,9 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 }
 .login-visual {
     flex: 1.3; position: relative;
-    background: url('/static/img/login-bg.svg') center/cover no-repeat, #07142b;
+    /* 优先用位图 login-bg.jpg；缺失则自动回退到矢量 login-bg.svg */
+    background: url('/static/img/login-bg.jpg') center/cover no-repeat,
+                url('/static/img/login-bg.svg') center/cover no-repeat, #07142b;
     display: flex; flex-direction: column; justify-content: flex-end;
     padding: 56px; color: #eaf6ff;
 }
