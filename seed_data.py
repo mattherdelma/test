@@ -69,6 +69,67 @@ def rand_point():
             return round(lon, 6), round(lat, 6)
     return 118.752, 34.542                  # 兜底：县城中心
 
+
+# highway 标签 → 系统道路类型字典值
+_HW_MAP = {
+    'motorway': '高速公路', 'motorway_link': '高速公路',
+    'trunk': '国道', 'trunk_link': '国道',
+    'primary': '城市主干道', 'primary_link': '城市主干道',
+    'secondary': '城市次干道', 'secondary_link': '城市次干道',
+    'tertiary': '城市次干道', 'tertiary_link': '城市次干道',
+    'unclassified': '县道', 'residential': '小区道路',
+    'living_street': '小区道路', 'service': '小区道路',
+}
+
+
+def _load_named_roads():
+    """读取 donghai_roads.json 中“有名称”的道路：返回 [(name, road_type, [[lon,lat],...], weight)]。"""
+    path = os.path.join(_BASE_DIR, 'static', 'js', 'maps', 'donghai_roads.json')
+    try:
+        d = json.load(open(path, encoding='utf-8'))
+    except Exception:
+        return []
+    roads = []
+    for ft in d.get('features', []):
+        p = ft.get('properties', {})
+        name = (p.get('name') or '').strip()
+        if not name:
+            continue
+        g = ft.get('geometry', {})
+        if g.get('type') != 'LineString':
+            continue
+        pts = [c for c in g.get('coordinates', []) if isinstance(c, list) and len(c) >= 2]
+        if len(pts) < 2:
+            continue
+        rtype = _HW_MAP.get(p.get('highway', ''), '城市次干道')
+        # 城区道路权重更高，使事故点更聚集在县城
+        weight = 5 if rtype in ('城市主干道', '城市次干道', '小区道路', '县道') else 1
+        roads.append((name, rtype, pts, weight))
+    return roads
+
+
+_NAMED_ROADS = _load_named_roads()
+_ROAD_WEIGHTS = [r[3] for r in _NAMED_ROADS] if _NAMED_ROADS else None
+
+
+def rand_point_on_road():
+    """在真实道路上取一点：返回 (lon, lat, road_name, road_type)，保证路名与坐标一致且在县界内。"""
+    if not _NAMED_ROADS:
+        lon, lat = rand_point()
+        return lon, lat, '', ''
+    for _ in range(40):
+        name, rtype, pts, _w = random.choices(_NAMED_ROADS, weights=_ROAD_WEIGHTS)[0]
+        i = random.randint(0, len(pts) - 2)
+        t = random.random()
+        lon = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t
+        lat = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t
+        # 轻微抖动（~20m），避免点全压在路中线上
+        lon += random.uniform(-0.0002, 0.0002)
+        lat += random.uniform(-0.0002, 0.0002)
+        if _in_boundary(lon, lat):
+            return round(lon, 6), round(lat, 6), name, rtype
+    return round(lon, 6), round(lat, 6), name, rtype
+
 # 东海县真实道路（城区主次干道 + 过境国省道 + 高速）
 ROADS = [
     ('牛山路', '城市主干道'), ('晶都大道', '城市主干道'), ('富华路', '城市主干道'),
@@ -171,11 +232,12 @@ def seed(n_per_year=500, years=3):
                     injury = random.randint(5, 20)
                     loss = random.randint(300000, 2000000)
 
-                road = random.choice(ROADS)
                 acc_no = f'JT{occur_time.strftime("%Y%m%d")}{seq:04d}'
                 seq += 1
-                # 演示数据经纬度：保证全部落在东海县真实边界内
-                lon, lat = rand_point()
+                # 在真实道路上取点：经纬度落在县界内，且路名/道路类型与位置一致
+                lon, lat, road_name, road_type = rand_point_on_road()
+                if not road_name:                       # 道路数据缺失时退回旧列表
+                    road_name, road_type = random.choice(ROADS)
 
                 cur = conn.execute('''
                     INSERT INTO accidents(
@@ -194,11 +256,11 @@ def seed(n_per_year=500, years=3):
                     random.choices(DEFAULT_DICTS['weather'], weights=[50, 20, 15, 5, 7, 3])[0],
                     random.choices(DEFAULT_DICTS['visibility'], weights=[60, 25, 10, 5])[0],
                     random.choice(DEFAULT_DICTS['district']),
-                    road[0],
+                    road_name,
                     f'{random.randint(1, 30)}号段',
                     f'K{random.randint(1, 200)}+{random.randint(0, 900)}',
                     lon, lat,
-                    road[1],
+                    road_type,
                     random.choice(DEFAULT_DICTS['road_shape']),
                     random.choices(DEFAULT_DICTS['road_condition'], weights=[55, 20, 10, 5, 5, 5])[0],
                     death, injury, loss,

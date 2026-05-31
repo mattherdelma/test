@@ -148,7 +148,7 @@ a:hover { color: var(--primary-dark); }
 .topbar .user a { margin-left: 14px; padding: 4px 13px; border: 1px solid var(--border-strong); border-radius: 20px; color: var(--text-light); transition: all .15s; }
 .topbar .user a:hover { border-color: var(--danger); color: var(--danger); background: #fef2f2; }
 
-.content { padding: 24px; flex: 1; overflow-x: auto; position: relative; }
+.content { padding: 24px; flex: 1; overflow-x: auto; }
 
 /* ============ 卡片 ============ */
 .card {
@@ -419,3 +419,26 @@ textarea.form-control { resize: vertical; min-height: 70px; }
     transform: rotate(-45deg); box-shadow: 0 2px 6px rgba(0,0,0,.4); margin: 0 auto;
 }
 .mp-pin::after { content: ''; display: block; width: 10px; height: 4px; margin: 2px auto 0; border-radius: 50%; background: rgba(0,0,0,.25); }
+
+/* ============ 离线地图(Leaflet)图层定位与层叠保障 ============ */
+/* 防止全局样式影响导致散点/热力/边界等覆盖层不显示 */
+.leaflet-container { position: relative; overflow: hidden; }
+.leaflet-pane,
+.leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg, .leaflet-pane > canvas,
+.leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+.leaflet-map-pane { z-index: auto; }
+.leaflet-tile-pane    { z-index: 200 !important; }
+.leaflet-overlay-pane { z-index: 400 !important; }
+.leaflet-shadow-pane  { z-index: 500 !important; }
+.leaflet-marker-pane  { z-index: 600 !important; }
+.leaflet-tooltip-pane { z-index: 650 !important; }
+.leaflet-popup-pane   { z-index: 700 !important; }
+.leaflet-overlay-pane svg,
+.leaflet-overlay-pane canvas { max-width: none !important; max-height: none !important; }
+.leaflet-control { z-index: 800; }
