@@ -8,6 +8,7 @@ data/*.db
 data/*.db-journal
 uploads/
 backup/
+tiles/
 dist/
 build/
 *.spec

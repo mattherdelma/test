@@ -80,8 +80,10 @@ python download_donghai_map.py
 ├─ database.py             数据库初始化与连接
 ├─ seed_data.py            演示数据生成（3 年共约 1500 条）
 ├─ report_generator.py     Excel / Word 报表生成 + 批量导入解析
-├─ download_libs.py        前端依赖（ECharts）下载脚本
-├─ download_donghai_map.py 东海县街道/乡镇边界 + 真实路网下载脚本
+├─ download_libs.py        前端依赖下载脚本（ECharts + Leaflet 地图引擎）
+├─ download_donghai_map.py 东海县县界 + 路网矢量数据下载脚本
+├─ download_donghai_tiles.py 东海县离线瓦片底图下载脚本（高德式可缩放，约300MB）
+├─ tiles/                  离线地图瓦片（运行上面脚本后生成，放 exe 旁，不入库）
 ├─ build_exe.py            打包 EXE 脚本
 ├─ run.bat                 Windows 一键启动
 ├─ build.bat               Windows 一键打包

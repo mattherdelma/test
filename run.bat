@@ -23,15 +23,19 @@ if errorlevel 1 (
 )
 echo [OK] Using interpreter: %PY%
 
-REM --- first run: download ECharts (front-end lib) ---
+REM --- first run: download front-end libs (ECharts + Leaflet) ---
 if not exist "static\js\echarts.min.js" (
-    echo [SETUP] Downloading ECharts ...
+    echo [SETUP] Downloading front-end libraries ...
     %PY% download_libs.py
     if errorlevel 1 (
         echo [ERROR] Download failed. Check your network and retry.
         pause
         exit /b 1
     )
+)
+if not exist "static\js\leaflet.js" (
+    echo [SETUP] Downloading map engine Leaflet ...
+    %PY% download_libs.py
 )
 
 REM --- first run: fetch Donghai map data (boundary + roads) ---

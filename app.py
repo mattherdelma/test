@@ -36,6 +36,8 @@ else:
 
 UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
 BACKUP_DIR = os.path.join(BASE_DIR, 'backup')
+# 离线地图瓦片目录：放在 exe 旁（不打进 exe，体积大、单独拷贝），开发时在项目根
+TILES_DIR = os.path.join(BASE_DIR, 'tiles')
 
 app = Flask(__name__,
             template_folder=os.path.join(RES_DIR, 'templates'),
@@ -830,6 +832,30 @@ def uploaded_file(acc_id, name):
     if not os.path.exists(os.path.join(sub, name)):
         abort(404)
     return send_from_directory(sub, name)
+
+
+# ============ 离线地图瓦片 ============
+
+@app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
+def map_tile(z, x, y):
+    """提供本地离线地图瓦片。缺失返回 404，前端 Leaflet 自动留白。"""
+    sub = os.path.join(TILES_DIR, str(z), str(x))
+    fname = f'{y}.png'
+    if not os.path.exists(os.path.join(sub, fname)):
+        abort(404)
+    resp = send_from_directory(sub, fname)
+    resp.headers['Cache-Control'] = 'public, max-age=604800'
+    return resp
+
+
+@app.route('/api/tiles/status')
+@login_required
+def api_tiles_status():
+    """报告本地瓦片是否就绪，供前端提示。"""
+    ready = os.path.isdir(TILES_DIR) and any(
+        os.scandir(TILES_DIR)
+    ) if os.path.isdir(TILES_DIR) else False
+    return jsonify({'ready': bool(ready)})
 
 
 # ============ 批量导入 ============
