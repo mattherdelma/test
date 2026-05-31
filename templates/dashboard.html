@@ -196,12 +196,18 @@ async function renderMap(months) {
     ptLayer.clearLayers();
     if (heatLayer) { lmap.removeLayer(heatLayer); heatLayer = null; }
 
+    if (!m.points || m.count === 0) {
+        statusEl.textContent = '该统计区间内无事故点，请切换更长的统计区间（如近 24/36 个月）';
+    }
+
     // 渲染散点 / 热力图（独立 try，避免任何异常阻断）
+    let drawn = 0;
     try {
         if (mode === 'heat' && window.L && L.heatLayer) {
             // 热力图：[lat, lon, intensity]
             const heatData = m.points.map(p => [p.value[1], p.value[0], Math.min(1, p.value[2] / 20)]);
             heatLayer = L.heatLayer(heatData, { radius: 22, blur: 18, maxZoom: 17 }).addTo(lmap);
+            drawn = heatData.length;
         } else {
             // 散点：按等级着色，点击看详情
             for (const p of m.points) {
@@ -216,10 +222,13 @@ async function renderMap(months) {
                     `等级: ${p.level} · ${p.type}<br/>死亡: ${p.death} 人，受伤: ${p.injury} 人`
                 );
                 ptLayer.addLayer(marker);
+                drawn++;
             }
         }
+        if (m.count > 0) statusEl.textContent = `共 ${m.count} 个事故点（已绘制 ${drawn}）`;
     } catch (e) {
         console.error('事故点渲染失败', e);
+        statusEl.textContent = '事故点渲染异常：' + (e && e.message ? e.message : e);
     }
 
     // 县界最后画：即使边界数据异常，也不影响上面的散点/热力图
@@ -229,6 +238,12 @@ async function renderMap(months) {
     } catch (e) {
         console.error('县界渲染失败', e);
     }
+
+    // 修正容器尺寸（防止初始化时布局未稳导致图层不显示），并把事故点置于最上层
+    try {
+        lmap.invalidateSize();
+        ptLayer.eachLayer(l => l.bringToFront && l.bringToFront());
+    } catch (e) { /* ignore */ }
 }
 
 async function loadAll() {
