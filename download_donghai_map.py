@@ -46,8 +46,9 @@ DATAV_FULL = 'https://geo.datav.aliyun.com/areas_v3/bound/{code}_full.json'
 
 # Overpass 镜像，按顺序尝试（不同镜像对 Accept/UA 头要求不一，故统一带规范请求头）
 OVERPASS_ENDPOINTS = [
-    'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass-api.de/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
     'https://overpass.openstreetmap.ru/api/interpreter',
 ]
@@ -68,8 +69,9 @@ def _ctx():
 
 def _fetch(url, ctx, data=None, timeout=180, extra_headers=None):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) donghai-traffic-app',
-        'Accept': '*/*',
+        # 用描述性 UA + Accept:application/json；overpass-api.de 对伪装浏览器 UA 会回 406
+        'User-Agent': 'donghai-traffic-app/1.0 (county road import)',
+        'Accept': 'application/json',
         'Accept-Language': 'zh-CN,zh;q=0.9',
     }
     if extra_headers:
