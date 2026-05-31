@@ -181,35 +181,53 @@ async function renderMap(months) {
         document.getElementById('tileHint').style.display = st.ready ? 'none' : 'block';
     } catch (e) { /* ignore */ }
 
-    await ensureBoundary();
-    drawBoundary(document.getElementById('boundaryToggle').checked);
-
-    const m = await AccApp.fetchJSON(`/api/dashboard/map?months=${months}`);
+    // 先取事故点数据（优先保证散点/热力图能画出来）
+    let m;
+    try {
+        m = await AccApp.fetchJSON(`/api/dashboard/map?months=${months}`);
+    } catch (e) {
+        console.error('事故点数据加载失败', e);
+        statusEl.textContent = '事故点加载失败';
+        return;
+    }
     statusEl.textContent = `共 ${m.count} 个事故点`;
 
     // 清空旧图层
     ptLayer.clearLayers();
     if (heatLayer) { lmap.removeLayer(heatLayer); heatLayer = null; }
 
-    if (mode === 'heat' && window.L && L.heatLayer) {
-        // 热力图：[lat, lon, intensity]
-        const heatData = m.points.map(p => [p.value[1], p.value[0], Math.min(1, p.value[2] / 20)]);
-        heatLayer = L.heatLayer(heatData, { radius: 22, blur: 18, maxZoom: 17 }).addTo(lmap);
-    } else {
-        // 散点：按等级着色，点击看详情
-        for (const p of m.points) {
-            const lon = p.value[0], lat = p.value[1], w = p.value[2];
-            const marker = L.circleMarker([lat, lon], {
-                radius: Math.min(16, 4 + Math.sqrt(w) * 2),
-                color: '#fff', weight: 0.8,
-                fillColor: LEVEL_COLOR[p.level] || '#7f8c8d', fillOpacity: 0.8,
-            });
-            marker.bindPopup(
-                `<b>${p.name}</b><br/>时间: ${p.occur_time}<br/>地点: ${p.road}<br/>` +
-                `等级: ${p.level} · ${p.type}<br/>死亡: ${p.death} 人，受伤: ${p.injury} 人`
-            );
-            ptLayer.addLayer(marker);
+    // 渲染散点 / 热力图（独立 try，避免任何异常阻断）
+    try {
+        if (mode === 'heat' && window.L && L.heatLayer) {
+            // 热力图：[lat, lon, intensity]
+            const heatData = m.points.map(p => [p.value[1], p.value[0], Math.min(1, p.value[2] / 20)]);
+            heatLayer = L.heatLayer(heatData, { radius: 22, blur: 18, maxZoom: 17 }).addTo(lmap);
+        } else {
+            // 散点：按等级着色，点击看详情
+            for (const p of m.points) {
+                const lon = p.value[0], lat = p.value[1], w = p.value[2];
+                const marker = L.circleMarker([lat, lon], {
+                    radius: Math.min(16, 4 + Math.sqrt(w) * 2),
+                    color: '#fff', weight: 0.9,
+                    fillColor: LEVEL_COLOR[p.level] || '#7f8c8d', fillOpacity: 0.85,
+                });
+                marker.bindPopup(
+                    `<b>${p.name}</b><br/>时间: ${p.occur_time}<br/>地点: ${p.road}<br/>` +
+                    `等级: ${p.level} · ${p.type}<br/>死亡: ${p.death} 人，受伤: ${p.injury} 人`
+                );
+                ptLayer.addLayer(marker);
+            }
         }
+    } catch (e) {
+        console.error('事故点渲染失败', e);
+    }
+
+    // 县界最后画：即使边界数据异常，也不影响上面的散点/热力图
+    try {
+        await ensureBoundary();
+        drawBoundary(document.getElementById('boundaryToggle').checked);
+    } catch (e) {
+        console.error('县界渲染失败', e);
     }
 }
 
