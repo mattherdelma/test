@@ -44,11 +44,6 @@ BBOX = (34.30, 118.40, 34.95, 119.08)
 DATAV = 'https://geo.datav.aliyun.com/areas_v3/bound/{code}.json'
 DATAV_FULL = 'https://geo.datav.aliyun.com/areas_v3/bound/{code}_full.json'
 
-# GitHub 镜像（datav 在部分内网/代理下返回 403 时的可靠兜底）：
-# longwosion/geojson-map-china 的 geometryCouties/{市码}.json 含该市各区县真实边界。
-GITHUB_CITY_COUNTIES = ('https://raw.githubusercontent.com/longwosion/'
-                        'geojson-map-china/master/geometryCouties/{code}.json')
-
 # Overpass 镜像，按顺序尝试（不同镜像对 Accept/UA 头要求不一，故统一带规范请求头）
 OVERPASS_ENDPOINTS = [
     'https://overpass.kumi.systems/api/interpreter',
@@ -152,25 +147,6 @@ def download_county(out_name, label, city_geo):
                 print(f'  [完成] {out_name}  （从连云港市数据抽取东海县）')
                 return True
         print('  [警告] 连云港市数据中未找到东海县')
-
-    # 方案C：GitHub 镜像（datav 被代理 403 时的可靠兜底）
-    url = GITHUB_CITY_COUNTIES.format(code=CITY_CODE)
-    try:
-        print(f'[下载] {label} 边界(GitHub 兜底): {url}')
-        geo = json.loads(_fetch(url, _ctx(), timeout=60))
-        for feat in geo.get('features', []):
-            props = feat.get('properties', {})
-            if str(props.get('id')) == REGION_CODE or props.get('name') == '东海县':
-                props['name'] = '东海县'
-                props['adcode'] = int(REGION_CODE)
-                props.setdefault('center', [118.752, 34.542])
-                fc = {'type': 'FeatureCollection', 'features': [feat]}
-                with open(out, 'w', encoding='utf-8') as f:
-                    json.dump(fc, f, ensure_ascii=False)
-                print(f'  [完成] {out_name}  真实县界（GitHub 镜像）')
-                return True
-    except Exception as e:
-        print(f'  [失败] GitHub 兜底: {e}')
 
     print('  [跳过] 东海县边界获取失败，保留内置占位县界（程序仍可正常运行）')
     return False
