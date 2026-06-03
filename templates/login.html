@@ -9,17 +9,99 @@
 </head>
 <body>
 <div class="login-page">
+    <!-- ============ 左侧数据大屏 ============ -->
     <div class="login-visual">
-        <div class="lv-brand"><img src="{{ url_for('static', filename='img/logo.png') }}" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/logo.svg') }}'" alt="" style="width:30px;height:30px;">东海县交通事故分析系统</div>
-        <h2>道路交通事故<br>统计与可视化分析平台</h2>
-        <p>汇聚事故全要素数据，驱动事故时空分布、成因研判与态势预警，为道路交通安全治理提供数据支撑。</p>
-        <div class="lv-tags">
-            <span>◍ 事故时空分布</span>
-            <span>◈ 离线地图研判</span>
-            <span>▤ 智能统计分析</span>
-            <span>⚑ 安全态势预警</span>
+        <div class="bs-scan"></div>
+
+        <div class="bs-top">
+            <div class="lv-brand">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/logo.svg') }}'" alt="" style="width:28px;height:28px;">
+                东海县道路交通事故分析系统
+            </div>
+            <div class="bs-clock">
+                <span class="bs-time" id="bsTime">--:--:--</span>
+                <span class="bs-date" id="bsDate">----年--月--日</span>
+            </div>
+        </div>
+
+        <div class="bs-title">
+            <h2>道路交通事故统计与可视化分析平台</h2>
+            <p>Traffic Accident Statistics &amp; Visualization Analytics</p>
+        </div>
+
+        <!-- KPI 指标 -->
+        <div class="bs-kpis">
+            <div class="bs-card">
+                <div class="bs-kpi-label">累计事故记录</div>
+                <div class="bs-kpi-num" data-count="12860">0<small>起</small></div>
+            </div>
+            <div class="bs-card">
+                <div class="bs-kpi-label">本年度事故</div>
+                <div class="bs-kpi-num" data-count="1193">0<small>起</small></div>
+            </div>
+            <div class="bs-card">
+                <div class="bs-kpi-label">重点监测路段</div>
+                <div class="bs-kpi-num" data-count="48">0<small>段</small></div>
+            </div>
+            <div class="bs-card warn">
+                <div class="bs-kpi-label">实时安全预警</div>
+                <div class="bs-kpi-num" data-count="7">0<small>项</small></div>
+            </div>
+        </div>
+
+        <!-- 图表面板 -->
+        <div class="bs-panels">
+            <div class="bs-panel">
+                <div class="bs-panel-hd">近 12 月事故趋势</div>
+                <svg class="bs-spark" viewBox="0 0 600 200" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="bsg" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stop-color="#22d3ee" stop-opacity=".45"/>
+                            <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    <path class="ar" fill="url(#bsg)" d="M0,200 L0,114 54.5,128 109.1,105 163.6,90 218.2,122 272.7,80 327.3,66 381.8,101 436.4,58 490.9,82 545.5,50 600,72 L600,200 Z"/>
+                    <polyline class="ln" points="0,114 54.5,128 109.1,105 163.6,90 218.2,122 272.7,80 327.3,66 381.8,101 436.4,58 490.9,82 545.5,50 600,72"/>
+                    <g class="dt">
+                        <circle cx="327.3" cy="66" r="3.5"/><circle cx="436.4" cy="58" r="3.5"/><circle cx="545.5" cy="50" r="4"/>
+                    </g>
+                </svg>
+            </div>
+            <div class="bs-panel">
+                <div class="bs-panel-hd">事故等级构成</div>
+                <div class="bs-bars">
+                    <div class="bs-bar lv1"><div class="t"><span>轻微事故</span><span>60%</span></div><div class="track"><div class="fill" data-pct="60"></div></div></div>
+                    <div class="bs-bar lv2"><div class="t"><span>一般事故</span><span>30%</span></div><div class="track"><div class="fill" data-pct="30"></div></div></div>
+                    <div class="bs-bar lv3"><div class="t"><span>重大事故</span><span>8%</span></div><div class="track"><div class="fill" data-pct="8"></div></div></div>
+                    <div class="bs-bar lv4"><div class="t"><span>特大事故</span><span>2%</span></div><div class="track"><div class="fill" data-pct="2"></div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 授权账号（点击快速登录） -->
+        <div class="bs-accounts">
+            <div class="bs-accounts-hd">▣ 授权终端账号 · 点击卡片快速填充登录</div>
+            <div class="bs-acc-list">
+                <div class="bs-acc r-admin" data-u="admin" data-p="admin123">
+                    <div class="role"><span class="dot"></span>系统管理员</div>
+                    <div class="cred">账号 <b>admin</b><br>密码 <b>admin123</b></div>
+                    <div class="go">登录 ›</div>
+                </div>
+                <div class="bs-acc r-rec" data-u="recorder" data-p="123456">
+                    <div class="role"><span class="dot"></span>数据录入员</div>
+                    <div class="cred">账号 <b>recorder</b><br>密码 <b>123456</b></div>
+                    <div class="go">登录 ›</div>
+                </div>
+                <div class="bs-acc r-view" data-u="viewer" data-p="123456">
+                    <div class="role"><span class="dot"></span>数据查看者</div>
+                    <div class="cred">账号 <b>viewer</b><br>密码 <b>123456</b></div>
+                    <div class="go">登录 ›</div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- ============ 右侧登录表单 ============ -->
     <div class="login-form-wrap">
         <div class="login-box">
             <h1>欢迎登录</h1>
@@ -27,11 +109,11 @@
             <form method="post">
                 <div class="form-group">
                     <label>用户名</label>
-                    <input class="form-control" name="username" placeholder="请输入用户名" autofocus required>
+                    <input class="form-control" name="username" id="username" placeholder="请输入用户名" autofocus required>
                 </div>
                 <div class="form-group">
                     <label>密码</label>
-                    <input class="form-control" name="password" type="password" placeholder="请输入密码" required>
+                    <input class="form-control" name="password" id="password" type="password" placeholder="请输入密码" required>
                 </div>
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% for cat, msg in messages %}
@@ -41,11 +123,59 @@
                 <button class="btn" type="submit">登 录</button>
             </form>
             <div class="tips">
-                初始账号：admin / admin123（管理员）<br>
-                recorder / 123456（录入员）　viewer / 123456（查看者）
+                提示：可点击左侧「授权终端账号」卡片自动填充<br>
+                admin / admin123（管理员）　recorder · viewer / 123456
             </div>
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    // 实时时钟
+    var WD = ['日', '一', '二', '三', '四', '五', '六'];
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function tick() {
+        var d = new Date();
+        var t = document.getElementById('bsTime'), dt = document.getElementById('bsDate');
+        if (t) t.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        if (dt) dt.textContent = d.getFullYear() + '年' + pad(d.getMonth() + 1) + '月' + pad(d.getDate()) + '日 星期' + WD[d.getDay()];
+    }
+    tick(); setInterval(tick, 1000);
+
+    // 数字滚动
+    document.querySelectorAll('.bs-kpi-num').forEach(function (el) {
+        var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+        var unit = el.querySelector('small');
+        var suffix = unit ? unit.outerHTML : '';
+        var dur = 1400, start = null;
+        function step(ts) {
+            if (!start) start = ts;
+            var p = Math.min((ts - start) / dur, 1);
+            var val = Math.floor((1 - Math.pow(1 - p, 3)) * target); // ease-out cubic
+            el.innerHTML = val.toLocaleString('en-US') + suffix;
+            if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    });
+
+    // 条形图填充
+    setTimeout(function () {
+        document.querySelectorAll('.bs-bar .fill').forEach(function (f) {
+            f.style.width = (f.getAttribute('data-pct') || 0) + '%';
+        });
+    }, 300);
+
+    // 账号卡片 -> 填充登录表单
+    document.querySelectorAll('.bs-acc').forEach(function (card) {
+        card.addEventListener('click', function () {
+            var u = document.getElementById('username'), p = document.getElementById('password');
+            if (u) u.value = card.getAttribute('data-u') || '';
+            if (p) p.value = card.getAttribute('data-p') || '';
+            if (p) p.focus();
+        });
+    });
+})();
+</script>
 </body>
 </html>

@@ -326,28 +326,92 @@ textarea.form-control { resize: vertical; min-height: 70px; }
     min-height: 100vh; display: flex; align-items: stretch;
     background: #07142b; position: relative; overflow: hidden;
 }
+/* ---- 左侧数据大屏（科技感） ---- */
 .login-visual {
-    flex: 1.3; position: relative;
-    /* 优先用位图 login-bg.jpg；缺失则自动回退到矢量 login-bg.svg */
-    background: url('/static/img/login-bg.jpg') center/cover no-repeat,
-                url('/static/img/login-bg.svg') center/cover no-repeat, #07142b;
-    display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 56px; color: #eaf6ff;
+    flex: 1.4; position: relative; overflow: hidden;
+    background:
+        radial-gradient(1100px 560px at 16% 6%, rgba(34,211,238,.12), transparent 60%),
+        radial-gradient(900px 520px at 92% 96%, rgba(23,105,224,.18), transparent 60%),
+        linear-gradient(158deg, #06182f 0%, #04101f 58%, #03142a 100%);
+    display: flex; flex-direction: column; gap: 16px;
+    padding: 34px 42px; color: #dcefff;
 }
-.login-visual .lv-brand {
-    position: absolute; top: 46px; left: 56px;
-    font-size: 18px; font-weight: 700; letter-spacing: 1px;
-    display: flex; align-items: center; gap: 10px;
+/* 流动网格 */
+.login-visual::before {
+    content: ''; position: absolute; inset: -2px; pointer-events: none;
+    background-image:
+        linear-gradient(rgba(34,211,238,.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34,211,238,.07) 1px, transparent 1px);
+    background-size: 38px 38px;
+    -webkit-mask-image: radial-gradient(circle at 50% 38%, #000 55%, transparent 100%);
+            mask-image: radial-gradient(circle at 50% 38%, #000 55%, transparent 100%);
+    animation: bsGrid 14s linear infinite;
 }
-.login-visual .lv-brand .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 14px var(--accent-2); }
-.login-visual h2 { font-size: 30px; font-weight: 800; line-height: 1.25; letter-spacing: 1px; text-shadow: 0 2px 20px rgba(0,0,0,.4); }
-.login-visual p { margin-top: 14px; font-size: 14px; opacity: .8; max-width: 460px; line-height: 1.8; }
-.login-visual .lv-tags { margin-top: 22px; display: flex; gap: 10px; flex-wrap: wrap; }
-.login-visual .lv-tags span {
-    font-size: 12px; padding: 5px 12px; border-radius: 20px;
-    background: rgba(255,255,255,.08); border: 1px solid rgba(34,211,238,.3);
-    backdrop-filter: blur(4px);
+@keyframes bsGrid { from { background-position: 0 0, 0 0; } to { background-position: 0 38px, 38px 0; } }
+/* 扫描线 */
+.login-visual .bs-scan {
+    position: absolute; left: 0; right: 0; height: 160px; top: -160px; pointer-events: none; z-index: 0;
+    background: linear-gradient(180deg, transparent, rgba(34,211,238,.10) 72%, rgba(34,211,238,.24));
+    animation: bsScan 7s ease-in-out infinite;
 }
+@keyframes bsScan { 0% { top: -160px; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+.login-visual > *:not(.bs-scan) { position: relative; z-index: 1; }
+
+.bs-top { display: flex; align-items: center; justify-content: space-between; }
+.lv-brand { font-size: 17px; font-weight: 700; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; color: #eaf9ff; text-shadow: 0 0 14px rgba(34,211,238,.45); }
+.lv-brand img { filter: drop-shadow(0 0 6px rgba(34,211,238,.6)); }
+.bs-clock { text-align: right; line-height: 1.2; }
+.bs-time { display: block; font-size: 23px; font-weight: 800; color: #22d3ee; letter-spacing: 2px; font-variant-numeric: tabular-nums; text-shadow: 0 0 16px rgba(34,211,238,.6); }
+.bs-date { font-size: 12px; color: #7fa6cf; letter-spacing: 2px; }
+
+.bs-title h2 { font-size: 25px; font-weight: 800; line-height: 1.3; letter-spacing: 1px; background: linear-gradient(90deg, #eaf9ff, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.bs-title p { margin-top: 5px; font-size: 11px; letter-spacing: 3px; color: #5f86b0; text-transform: uppercase; }
+
+.bs-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
+.bs-card { position: relative; padding: 14px 13px; border: 1px solid rgba(34,211,238,.22); border-radius: 6px; overflow: hidden; background: linear-gradient(160deg, rgba(34,211,238,.09), rgba(8,20,40,.25)); }
+.bs-card::before, .bs-card::after { content: ''; position: absolute; width: 11px; height: 11px; border: 2px solid #22d3ee; }
+.bs-card::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.bs-card::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.bs-card.warn { border-color: rgba(245,165,36,.32); background: linear-gradient(160deg, rgba(245,165,36,.12), rgba(8,20,40,.25)); }
+.bs-card.warn::before, .bs-card.warn::after { border-color: #f5a524; }
+.bs-kpi-label { font-size: 12px; color: #8fb6dd; }
+.bs-kpi-num { font-size: 29px; font-weight: 800; color: #fff; letter-spacing: 1px; line-height: 1.1; margin-top: 5px; font-variant-numeric: tabular-nums; text-shadow: 0 0 18px rgba(34,211,238,.5); }
+.bs-card.warn .bs-kpi-num { text-shadow: 0 0 18px rgba(245,165,36,.55); }
+.bs-kpi-num small { font-size: 12px; color: #22d3ee; font-weight: 600; margin-left: 3px; }
+.bs-card.warn .bs-kpi-num small { color: #f5a524; }
+
+.bs-panels { display: grid; grid-template-columns: 1.45fr 1fr; gap: 13px; flex: 1; min-height: 0; }
+.bs-panel { border: 1px solid rgba(120,170,220,.18); border-radius: 6px; padding: 12px 14px; background: rgba(8,22,44,.38); display: flex; flex-direction: column; }
+.bs-panel-hd { font-size: 13px; color: #c4e6ff; letter-spacing: 1px; display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.bs-panel-hd::before { content: ''; width: 3px; height: 13px; background: #22d3ee; box-shadow: 0 0 9px #22d3ee; border-radius: 2px; }
+.bs-spark { width: 100%; flex: 1; min-height: 96px; }
+.bs-spark .ar { opacity: 0; animation: bsFade 1.4s ease forwards 1.5s; }
+.bs-spark .ln { fill: none; stroke: #22d3ee; stroke-width: 2.2; filter: drop-shadow(0 0 5px rgba(34,211,238,.7)); stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: bsDraw 2.4s ease forwards .3s; }
+.bs-spark .dt { fill: #eaf9ff; opacity: 0; animation: bsFade 1s ease forwards 1.9s; }
+@keyframes bsDraw { to { stroke-dashoffset: 0; } }
+@keyframes bsFade { to { opacity: 1; } }
+.bs-bars { display: flex; flex-direction: column; gap: 11px; justify-content: center; flex: 1; }
+.bs-bar .t { display: flex; justify-content: space-between; font-size: 12px; color: #a9cdee; margin-bottom: 5px; }
+.bs-bar .track { height: 8px; background: rgba(120,170,220,.12); border-radius: 5px; overflow: hidden; }
+.bs-bar .fill { height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, #1769e0, #22d3ee); box-shadow: 0 0 10px rgba(34,211,238,.6); transition: width 1.4s cubic-bezier(.2,.7,.2,1); }
+.bs-bar.lv2 .fill { background: linear-gradient(90deg, #0ea5a5, #34e0c0); }
+.bs-bar.lv3 .fill { background: linear-gradient(90deg, #f59e0b, #fbbf24); box-shadow: 0 0 10px rgba(245,165,36,.6); }
+.bs-bar.lv4 .fill { background: linear-gradient(90deg, #ef4444, #ff7a45); box-shadow: 0 0 10px rgba(239,68,68,.6); }
+
+.bs-accounts-hd { font-size: 12px; color: #7fa6cf; letter-spacing: 1px; margin-bottom: 9px; display: flex; align-items: center; gap: 6px; }
+.bs-acc-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.bs-acc { cursor: pointer; border: 1px solid rgba(34,211,238,.22); border-radius: 6px; padding: 12px 13px; background: rgba(8,22,44,.42); transition: .18s; position: relative; overflow: hidden; }
+.bs-acc:hover { border-color: #22d3ee; background: rgba(34,211,238,.12); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(34,211,238,.18); }
+.bs-acc:active { transform: translateY(0); }
+.bs-acc .role { font-size: 13px; font-weight: 700; color: #eaf9ff; display: flex; align-items: center; gap: 7px; }
+.bs-acc .role .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.bs-acc.r-admin .dot { color: #22d3ee; background: #22d3ee; }
+.bs-acc.r-rec .dot { color: #34e0c0; background: #34e0c0; }
+.bs-acc.r-view .dot { color: #f5a524; background: #f5a524; }
+.bs-acc .cred { font-size: 12px; color: #8fb6dd; margin-top: 8px; font-family: Consolas, 'Courier New', monospace; line-height: 1.7; }
+.bs-acc .cred b { color: #22d3ee; font-weight: 600; }
+.bs-acc .go { position: absolute; right: 11px; bottom: 11px; font-size: 11px; color: #22d3ee; opacity: 0; transition: .18s; }
+.bs-acc:hover .go { opacity: 1; }
 .login-form-wrap {
     width: 440px; flex-shrink: 0;
     background: rgba(10,22,44,.72);
