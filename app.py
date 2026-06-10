@@ -113,6 +113,9 @@ def login():
             session['name'] = row['name']
             session['role'] = row['role']
             log_action(row['id'], row['username'], '登录', '')
+            # 查看者登录后直接进入数据大屏（领导展示场景）
+            if row['role'] == 'viewer':
+                return redirect(url_for('bigscreen'))
             return redirect(url_for('dashboard'))
         flash('用户名或密码错误', 'error')
     return render_template('login.html')

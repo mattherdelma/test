@@ -6,110 +6,104 @@
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
 <style>
 :root {
-    --bs-cyan: #22d3ee; --bs-blue: #1769e0; --bs-warn: #f5a524; --bs-danger: #ff5b52;
+    --bs-cyan: #22d3ee; --bs-blue: #1769e0; --bs-warn: #f5a524; --bs-danger: #ff5b52; --bs-ok: #35e0a1;
     --bs-text: #d7ecff; --bs-faint: #6e93bd;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100%; overflow: hidden; background: #020b18; font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; }
 
-/* 1920×1080 设计稿整体缩放适配 */
 #stage {
     position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
     transform-origin: center center; color: var(--bs-text);
     background:
         radial-gradient(1300px 700px at 50% -10%, rgba(23,105,224,.22), transparent 62%),
-        radial-gradient(900px 600px at 8% 100%, rgba(34,211,238,.10), transparent 60%),
-        radial-gradient(900px 600px at 92% 100%, rgba(34,211,238,.10), transparent 60%),
+        radial-gradient(900px 600px at 6% 100%, rgba(34,211,238,.10), transparent 60%),
+        radial-gradient(900px 600px at 94% 100%, rgba(34,211,238,.10), transparent 60%),
         #030f20;
-    display: flex; flex-direction: column; padding: 0 24px 20px;
+    display: flex; flex-direction: column; padding: 0 22px 16px;
 }
-/* 流动网格背景 */
 #stage::before {
     content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
     background-image: linear-gradient(rgba(34,211,238,.05) 1px, transparent 1px),
                       linear-gradient(90deg, rgba(34,211,238,.05) 1px, transparent 1px);
-    background-size: 46px 46px;
-    animation: gridFlow 16s linear infinite;
+    background-size: 46px 46px; animation: gridFlow 16s linear infinite;
 }
 @keyframes gridFlow { to { background-position: 0 46px, 46px 0; } }
 #stage > * { position: relative; z-index: 1; }
 
 /* ===== 顶栏 ===== */
-.bs-head { height: 92px; display: flex; align-items: center; position: relative; }
-.bs-head::after {
-    content: ''; position: absolute; left: 0; right: 0; bottom: 6px; height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(34,211,238,.7) 18%, rgba(34,211,238,.7) 82%, transparent);
-    box-shadow: 0 0 16px rgba(34,211,238,.6);
-}
-.bs-head .side { flex: 1; display: flex; align-items: center; gap: 16px; font-size: 15px; color: var(--bs-faint); }
+.bs-head { height: 84px; display: flex; align-items: center; position: relative; }
+.bs-head::after { content: ''; position: absolute; left: 0; right: 0; bottom: 4px; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(34,211,238,.7) 16%, rgba(34,211,238,.7) 84%, transparent);
+    box-shadow: 0 0 16px rgba(34,211,238,.6); }
+.bs-head .side { flex: 1; display: flex; align-items: center; gap: 16px; font-size: 14px; color: var(--bs-faint); }
 .bs-head .side.r { justify-content: flex-end; }
-.bs-head h1 {
-    font-size: 34px; letter-spacing: 6px; font-weight: 800; white-space: nowrap; padding: 0 38px;
+.bs-head h1 { font-size: 33px; letter-spacing: 6px; font-weight: 800; white-space: nowrap; padding: 0 36px;
     background: linear-gradient(180deg, #fff, #7fd9ff); -webkit-background-clip: text; background-clip: text; color: transparent;
-    text-shadow: 0 0 30px rgba(34,211,238,.35);
-}
-.bs-clock { text-align: right; line-height: 1.25; }
-.bs-clock .t { font-size: 26px; font-weight: 800; color: var(--bs-cyan); letter-spacing: 2px; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px rgba(34,211,238,.7); }
-.bs-clock .d { font-size: 13px; letter-spacing: 1px; }
-.bs-back { color: var(--bs-faint); text-decoration: none; font-size: 14px; border: 1px solid rgba(110,147,189,.4); padding: 6px 14px; border-radius: 4px; transition: .2s; }
+    text-shadow: 0 0 30px rgba(34,211,238,.35); }
+.bs-clock { text-align: right; line-height: 1.2; }
+.bs-clock .t { font-size: 24px; font-weight: 800; color: var(--bs-cyan); letter-spacing: 2px; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px rgba(34,211,238,.7); }
+.bs-clock .d { font-size: 12px; }
+.tag { border: 1px solid rgba(34,211,238,.35); padding: 4px 12px; border-radius: 4px; color: var(--bs-cyan); font-size: 13px; }
+.bs-back { color: var(--bs-faint); text-decoration: none; font-size: 13px; border: 1px solid rgba(110,147,189,.4); padding: 5px 12px; border-radius: 4px; transition: .2s; }
 .bs-back:hover { color: var(--bs-cyan); border-color: var(--bs-cyan); box-shadow: 0 0 12px rgba(34,211,238,.35); }
 
-/* ===== 主体三栏 ===== */
-.bs-body { flex: 1; display: grid; grid-template-columns: 452px 1fr 452px; gap: 16px; min-height: 0; padding-top: 14px; }
-.bs-col { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+/* ===== 三栏主体 ===== */
+.bs-body { flex: 1; display: grid; grid-template-columns: 456px 1fr 456px; gap: 14px; min-height: 0; padding-top: 12px; }
+.bs-col { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
 
-/* 面板（含 FUI 四角） */
-.panel {
-    position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
+.panel { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
     background: linear-gradient(165deg, rgba(13,36,68,.55), rgba(5,16,34,.65));
-    border: 1px solid rgba(34,211,238,.20); border-radius: 4px; padding: 12px 14px 10px;
-}
-.panel::before, .panel::after, .panel .c3, .panel .c4 { content: ''; position: absolute; width: 14px; height: 14px; border: 2px solid var(--bs-cyan); filter: drop-shadow(0 0 4px rgba(34,211,238,.8)); }
+    border: 1px solid rgba(34,211,238,.20); border-radius: 4px; padding: 10px 13px 8px; }
+.panel::before, .panel::after, .panel .c3, .panel .c4 { content: ''; position: absolute; width: 13px; height: 13px; border: 2px solid var(--bs-cyan); filter: drop-shadow(0 0 4px rgba(34,211,238,.8)); }
 .panel::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
 .panel::after { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
 .panel .c3 { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
 .panel .c4 { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
-.panel h3 { font-size: 16px; font-weight: 700; letter-spacing: 1px; color: #e8f6ff; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-shrink: 0; }
-.panel h3::before { content: ''; width: 4px; height: 15px; background: var(--bs-cyan); border-radius: 2px; box-shadow: 0 0 10px var(--bs-cyan); }
-.panel h3 small { font-size: 11px; color: var(--bs-faint); font-weight: 400; letter-spacing: 2px; text-transform: uppercase; margin-left: auto; }
+.panel h3 { font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #e8f6ff; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-shrink: 0; }
+.panel h3::before { content: ''; width: 4px; height: 14px; background: var(--bs-cyan); border-radius: 2px; box-shadow: 0 0 10px var(--bs-cyan); }
+.panel h3 small { font-size: 10px; color: var(--bs-faint); font-weight: 400; letter-spacing: 2px; text-transform: uppercase; margin-left: auto; }
 .chart { flex: 1; min-height: 0; }
 
-/* ===== 中栏：KPI + 地图 ===== */
-.bs-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 118px; flex-shrink: 0; }
-.kpi {
-    position: relative; border: 1px solid rgba(34,211,238,.22); border-radius: 4px; padding: 16px 18px;
-    background: linear-gradient(160deg, rgba(34,211,238,.10), rgba(5,16,34,.5));
-    overflow: hidden;
-}
+/* 大数字 + 仪表盘 */
+.bignum { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 4px 0; }
+.bignum .v { font-size: 46px; font-weight: 800; letter-spacing: 1px; font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #fff, #7fd9ff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 0 30px rgba(34,211,238,.4); }
+.bignum .v small { font-size: 15px; -webkit-text-fill-color: var(--bs-cyan); margin-left: 3px; }
+.bignum .yoy { font-size: 13px; font-weight: 700; align-self: center; }
+.yoy.up { color: var(--bs-danger); } .yoy.down { color: var(--bs-ok); }
+.gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 1; min-height: 0; }
+
+/* 排行榜 */
+.rank { flex: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 2px 0; }
+.rank-item { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.rank-item .rk { width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: rgba(110,147,189,.18); color: #9cc3e8; flex-shrink: 0; }
+.rank-item .rk.rk1 { background: linear-gradient(135deg, #f5a524, #ffd479); color: #3a2600; box-shadow: 0 0 9px rgba(245,165,36,.6); }
+.rank-item .rk.rk2 { background: linear-gradient(135deg, #9fc6ee, #dfeeff); color: #0a2547; }
+.rank-item .rk.rk3 { background: linear-gradient(135deg, #d68a4e, #f0b483); color: #3a1a00; }
+.rank-item .rn { width: 92px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cfe7ff; flex-shrink: 0; }
+.rank-item .rb { flex: 1; height: 7px; background: rgba(110,147,189,.12); border-radius: 4px; overflow: hidden; }
+.rank-item .rb i { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, rgba(23,105,224,.5), var(--bs-cyan)); box-shadow: 0 0 8px rgba(34,211,238,.5); transition: width 1.2s cubic-bezier(.2,.7,.2,1); }
+.rank-item .rv { width: 44px; text-align: right; color: var(--bs-cyan); font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+/* KPI 条 */
+.bs-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; height: 108px; flex-shrink: 0; }
+.kpi { position: relative; border: 1px solid rgba(34,211,238,.22); border-radius: 4px; padding: 14px 16px; overflow: hidden;
+    background: linear-gradient(160deg, rgba(34,211,238,.10), rgba(5,16,34,.5)); }
 .kpi::after { content: ''; position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background: linear-gradient(90deg, var(--bs-cyan), transparent); }
-.kpi .lab { font-size: 14px; color: #9cc3e8; }
-.kpi .num { font-size: 38px; font-weight: 800; color: #fff; line-height: 1.25; font-variant-numeric: tabular-nums; text-shadow: 0 0 22px rgba(34,211,238,.55); }
-.kpi .num small { font-size: 14px; font-weight: 600; color: var(--bs-cyan); margin-left: 4px; }
-.kpi .yoy { position: absolute; right: 14px; bottom: 12px; font-size: 13px; font-weight: 700; }
-.kpi .yoy.up { color: var(--bs-danger); } .kpi .yoy.down { color: #35e0a1; }
-.kpi.k-death .num { text-shadow: 0 0 22px rgba(255,91,82,.6); } .kpi.k-death .num small { color: var(--bs-danger); }
-.kpi.k-death::after { background: linear-gradient(90deg, var(--bs-danger), transparent); }
-.kpi.k-injury .num small { color: var(--bs-warn); }
-.kpi.k-injury::after { background: linear-gradient(90deg, var(--bs-warn), transparent); }
+.kpi .lab { font-size: 13px; color: #9cc3e8; }
+.kpi .num { font-size: 34px; font-weight: 800; color: #fff; line-height: 1.3; font-variant-numeric: tabular-nums; text-shadow: 0 0 22px rgba(34,211,238,.55); }
+.kpi .num small { font-size: 13px; font-weight: 600; color: var(--bs-cyan); margin-left: 3px; }
+.kpi .yoy { position: absolute; right: 14px; bottom: 11px; font-size: 12px; font-weight: 700; }
+.kpi.k-death .num { text-shadow: 0 0 22px rgba(255,91,82,.6); } .kpi.k-death .num small { color: var(--bs-danger); } .kpi.k-death::after { background: linear-gradient(90deg, var(--bs-danger), transparent); }
+.kpi.k-injury .num small { color: var(--bs-warn); } .kpi.k-injury::after { background: linear-gradient(90deg, var(--bs-warn), transparent); }
 
-#mapPanel { position: relative; }
-#mapChart { position: absolute; inset: 40px 8px 8px; }
-.map-legend { position: absolute; left: 16px; bottom: 12px; font-size: 12px; color: #9cc3e8; display: flex; gap: 14px; z-index: 2; }
+#mapPanel { flex: 1.7; }
+#mapChart { position: absolute; inset: 36px 6px 6px; }
+.map-legend { position: absolute; left: 16px; bottom: 10px; font-size: 12px; color: #9cc3e8; display: flex; gap: 13px; z-index: 2; }
 .map-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; box-shadow: 0 0 7px currentColor; }
-
-/* ===== 实时事故滚动 ===== */
-.feed { flex: 1; min-height: 0; overflow: hidden; position: relative; }
-.feed-track { position: absolute; width: 100%; }
-.feed-track.anim { animation: feedRoll var(--roll-dur, 30s) linear infinite; }
-@keyframes feedRoll { to { transform: translateY(-50%); } }
-.feed-item { display: flex; align-items: center; gap: 10px; padding: 8px 6px; font-size: 13px; border-bottom: 1px dashed rgba(110,147,189,.18); }
-.feed-item .lv { flex-shrink: 0; font-size: 11px; padding: 2px 8px; border-radius: 3px; border: 1px solid; }
-.lv-1 { color: var(--bs-cyan); border-color: rgba(34,211,238,.5); background: rgba(34,211,238,.10); }
-.lv-2 { color: #35e0a1; border-color: rgba(53,224,161,.5); background: rgba(53,224,161,.10); }
-.lv-3 { color: var(--bs-warn); border-color: rgba(245,165,36,.5); background: rgba(245,165,36,.12); }
-.lv-4 { color: var(--bs-danger); border-color: rgba(255,91,82,.55); background: rgba(255,91,82,.12); }
-.feed-item .rd { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cfe7ff; }
-.feed-item .tm { flex-shrink: 0; color: var(--bs-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.center-bottom { display: grid; grid-template-columns: 1.45fr 1fr; gap: 14px; height: 226px; flex-shrink: 0; }
+.center-bottom .panel { flex: none; height: 100%; }
 </style>
 </head>
 <body>
@@ -117,67 +111,74 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #020b18; f
     <div class="bs-head">
         <div class="side">
             <a class="bs-back" href="{{ url_for('dashboard') }}">‹ 返回系统</a>
-            <span>{{ current_user.name or current_user.username }} · 在线</span>
+            <span class="tag">统计范围：近 12 个月</span>
         </div>
         <h1>东海县道路交通安全态势大屏</h1>
         <div class="side r">
-            <div class="bs-clock">
-                <div class="t" id="clk">--:--:--</div>
-                <div class="d" id="clkd"></div>
-            </div>
+            <span>{{ current_user.name or current_user.username }} · 在线</span>
+            <div class="bs-clock"><div class="t" id="clk">--:--:--</div><div class="d" id="clkd"></div></div>
         </div>
     </div>
 
     <div class="bs-body">
-        <!-- 左栏 -->
+        <!-- ===== 左栏 ===== -->
         <div class="bs-col">
             <div class="panel"><i class="c3"></i><i class="c4"></i>
-                <h3>近12月事故趋势 <small>Monthly Trend</small></h3>
-                <div class="chart" id="cTrend"></div>
+                <h3>核心指标总览 <small>Overview</small></h3>
+                <div class="bignum"><span style="font-size:13px;color:#9cc3e8;align-self:center;">事故总数</span><span class="v" id="kTotal">0<small>起</small></span><span class="yoy" id="yTotal"></span></div>
+                <div class="gauges"><div class="chart" id="gA"></div><div class="chart" id="gB"></div></div>
             </div>
             <div class="panel"><i class="c3"></i><i class="c4"></i>
-                <h3>事故类型构成 <small>Accident Type</small></h3>
-                <div class="chart" id="cType"></div>
+                <h3>事故主要成因 TOP6 <small>Causes</small></h3>
+                <div class="rank" id="rankCause"></div>
             </div>
             <div class="panel"><i class="c3"></i><i class="c4"></i>
-                <h3>时段 × 星期热力 <small>Time Heatmap</small></h3>
-                <div class="chart" id="cHeat"></div>
+                <h3>事故高发路段 TOP6 <small>Top Roads</small></h3>
+                <div class="rank" id="rankRoad"></div>
             </div>
         </div>
 
-        <!-- 中栏 -->
+        <!-- ===== 中栏 ===== -->
         <div class="bs-col">
             <div class="bs-kpis">
-                <div class="kpi"><div class="lab">近12月事故总数</div><div class="num" id="kTotal">0<small>起</small></div><div class="yoy" id="yTotal"></div></div>
                 <div class="kpi k-death"><div class="lab">死亡人数</div><div class="num" id="kDeath">0<small>人</small></div><div class="yoy" id="yDeath"></div></div>
                 <div class="kpi k-injury"><div class="lab">受伤人数</div><div class="num" id="kInjury">0<small>人</small></div><div class="yoy" id="yInjury"></div></div>
                 <div class="kpi"><div class="lab">直接经济损失</div><div class="num" id="kLoss">0<small>万元</small></div><div class="yoy" id="yLoss"></div></div>
+                <div class="kpi"><div class="lab">月均事故</div><div class="num" id="kAvg">0<small>起</small></div></div>
             </div>
             <div class="panel" id="mapPanel"><i class="c3"></i><i class="c4"></i>
                 <h3>事故地理分布 <small>Geo Distribution</small></h3>
                 <div id="mapChart"></div>
                 <div class="map-legend">
-                    <span><i style="color:#22d3ee"></i>轻微</span>
-                    <span><i style="color:#35e0a1"></i>一般</span>
-                    <span><i style="color:#f5a524"></i>重大</span>
-                    <span><i style="color:#ff5b52"></i>特大</span>
+                    <span><i style="color:#22d3ee"></i>轻微</span><span><i style="color:#35e0a1"></i>一般</span>
+                    <span><i style="color:#f5a524"></i>重大</span><span><i style="color:#ff5b52"></i>特大</span>
+                </div>
+            </div>
+            <div class="center-bottom">
+                <div class="panel"><i class="c3"></i><i class="c4"></i>
+                    <h3>月度事故趋势 <small>Monthly</small></h3>
+                    <div class="chart" id="cTrend"></div>
+                </div>
+                <div class="panel"><i class="c3"></i><i class="c4"></i>
+                    <h3>等级构成 <small>Severity</small></h3>
+                    <div class="chart" id="cLevel"></div>
                 </div>
             </div>
         </div>
 
-        <!-- 右栏 -->
+        <!-- ===== 右栏 ===== -->
         <div class="bs-col">
             <div class="panel"><i class="c3"></i><i class="c4"></i>
-                <h3>事故等级构成 <small>Severity</small></h3>
-                <div class="chart" id="cLevel"></div>
+                <h3>事故类型构成 <small>Type</small></h3>
+                <div class="chart" id="cType"></div>
             </div>
             <div class="panel"><i class="c3"></i><i class="c4"></i>
-                <h3>事故高发路段 TOP8 <small>Top Roads</small></h3>
-                <div class="chart" id="cRoads"></div>
+                <h3>时段 × 星期分布 <small>Time Heatmap</small></h3>
+                <div class="chart" id="cHeat"></div>
             </div>
             <div class="panel"><i class="c3"></i><i class="c4"></i>
-                <h3>事故动态 <small>Live Feed</small></h3>
-                <div class="feed"><div class="feed-track" id="feed"></div></div>
+                <h3>多维成因雷达 <small>Radar</small></h3>
+                <div class="chart" id="cRadar"></div>
             </div>
         </div>
     </div>
@@ -186,177 +187,136 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #020b18; f
 <script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
 <script>
 (function () {
-    /* ---- 1920×1080 整体缩放适配 ---- */
     var stage = document.getElementById('stage');
-    function fit() {
-        var s = Math.min(innerWidth / 1920, innerHeight / 1080);
-        stage.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
-    }
+    function fit() { var s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')'; }
     fit(); addEventListener('resize', fit);
 
-    /* ---- 时钟 ---- */
     var WD = ['日','一','二','三','四','五','六'];
     function p(n) { return n < 10 ? '0' + n : n; }
-    function tick() {
-        var d = new Date();
+    function tick() { var d = new Date();
         document.getElementById('clk').textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
-        document.getElementById('clkd').textContent = d.getFullYear() + '年' + p(d.getMonth()+1) + '月' + p(d.getDate()) + '日 星期' + WD[d.getDay()];
-    }
+        document.getElementById('clkd').textContent = d.getFullYear() + '年' + p(d.getMonth()+1) + '月' + p(d.getDate()) + '日 星期' + WD[d.getDay()]; }
     tick(); setInterval(tick, 1000);
 
-    /* ---- 数字滚动 ---- */
-    function countUp(id, target, decimals) {
-        var el = document.getElementById(id), unit = el.querySelector('small').outerHTML;
-        var dur = 1500, t0 = null;
-        function step(ts) {
-            if (!t0) t0 = ts;
-            var k = Math.min((ts - t0) / dur, 1), v = (1 - Math.pow(1 - k, 3)) * target;
-            el.innerHTML = (decimals ? v.toFixed(decimals) : Math.round(v).toLocaleString()) + unit;
-            if (k < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-    }
-    function yoy(id, v) {
-        var el = document.getElementById(id);
-        if (v === null || v === undefined) { el.textContent = ''; return; }
-        el.textContent = '同比 ' + (v > 0 ? '▲' : '▼') + Math.abs(v) + '%';
-        el.className = 'yoy ' + (v > 0 ? 'up' : 'down');
-    }
+    function countUp(id, target, dec) { var el = document.getElementById(id), unit = el.querySelector('small') ? el.querySelector('small').outerHTML : '', t0 = null;
+        function step(ts) { if (!t0) t0 = ts; var k = Math.min((ts - t0) / 1500, 1), v = (1 - Math.pow(1 - k, 3)) * target;
+            el.innerHTML = (dec ? v.toFixed(dec) : Math.round(v).toLocaleString()) + unit; if (k < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }
+    function yoy(id, v) { var el = document.getElementById(id); if (v == null) { el.textContent = ''; return; }
+        el.textContent = '同比' + (v > 0 ? '▲' : '▼') + Math.abs(v) + '%'; el.className = (el.className.indexOf('yoy') < 0 ? 'yoy ' : 'yoy ') + (v > 0 ? 'up' : 'down'); }
 
-    /* ---- ECharts 公共暗色配置 ---- */
-    var AX = { axisLine: { lineStyle: { color: 'rgba(110,147,189,.4)' } }, axisLabel: { color: '#8fb6dd', fontSize: 11 },
-               splitLine: { lineStyle: { color: 'rgba(110,147,189,.12)' } } };
+    var AX = { axisLine: { lineStyle: { color: 'rgba(110,147,189,.4)' } }, axisLabel: { color: '#8fb6dd', fontSize: 11 }, splitLine: { lineStyle: { color: 'rgba(110,147,189,.12)' } } };
     var TIP = { backgroundColor: 'rgba(5,18,38,.92)', borderColor: 'rgba(34,211,238,.4)', textStyle: { color: '#d7ecff', fontSize: 12 } };
     var LV_COLOR = { '轻微事故': '#22d3ee', '一般事故': '#35e0a1', '重大事故': '#f5a524', '特大事故': '#ff5b52' };
-    function chart(id) { return echarts.init(document.getElementById(id)); }
-    function get(url) { return fetch(url).then(function (r) { return r.json(); }); }
+    var PIE_COLOR = ['#22d3ee','#1769e0','#35e0a1','#f5a524','#ff5b52','#a78bfa','#60a5fa','#f472b6'];
+    var charts = [];
+    function chart(id) { var c = echarts.init(document.getElementById(id)); charts.push(c); return c; }
+    addEventListener('resize', function () { charts.forEach(function (c) { c.resize(); }); });
+    function get(u) { return fetch(u).then(function (r) { return r.json(); }); }
 
-    /* ---- KPI ---- */
+    function rank(elId, arr, nameKey, valKey) {
+        var el = document.getElementById(elId), max = Math.max.apply(null, arr.map(function (x) { return x[valKey]; }).concat([1]));
+        el.innerHTML = arr.map(function (x, i) {
+            return '<div class="rank-item"><span class="rk rk' + (i + 1) + '">' + (i + 1) + '</span><span class="rn">' + (x[nameKey] || '-') +
+                '</span><span class="rb"><i data-w="' + Math.round(x[valKey] / max * 100) + '"></i></span><span class="rv">' + x[valKey] + '</span></div>';
+        }).join('');
+        setTimeout(function () { el.querySelectorAll('.rb i').forEach(function (b) { b.style.width = b.getAttribute('data-w') + '%'; }); }, 250);
+    }
+    function gauge(id, val, color, name) {
+        chart(id).setOption({ series: [{ type: 'gauge', startAngle: 90, endAngle: -270, radius: '76%', center: ['50%','46%'],
+            pointer: { show: false }, progress: { show: true, width: 9, roundCap: true, itemStyle: { color: color } },
+            axisLine: { lineStyle: { width: 9, color: [[1, 'rgba(110,147,189,.18)']] } },
+            splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false }, anchor: { show: false },
+            data: [{ value: val, name: name }],
+            title: { offsetCenter: [0, '78%'], color: '#9cc3e8', fontSize: 12 },
+            detail: { valueAnimation: true, offsetCenter: [0, 0], formatter: '{value}%', color: '#fff', fontSize: 21, fontWeight: 'bolder' } }] });
+    }
+
+    /* KPI + 大数字 */
     get('/api/dashboard/summary?months=12').then(function (s) {
         countUp('kTotal', s.total); countUp('kDeath', s.deaths); countUp('kInjury', s.injuries);
-        countUp('kLoss', s.loss / 10000, 1);
+        countUp('kLoss', s.loss / 10000, 1); countUp('kAvg', s.total / 12);
         yoy('yTotal', s.total_yoy); yoy('yDeath', s.deaths_yoy); yoy('yInjury', s.injuries_yoy); yoy('yLoss', s.loss_yoy);
     });
 
-    /* ---- 趋势：柱(事故数) + 折线(伤亡) ---- */
+    /* 等级分布 -> 环形 + 仪表盘A(重大及以上占比) */
+    get('/api/dashboard/distribution?field=level&months=12').then(function (d) {
+        var total = d.reduce(function (a, x) { return a + x.count; }, 0) || 1;
+        var severe = d.filter(function (x) { return x.name === '重大事故' || x.name === '特大事故'; }).reduce(function (a, x) { return a + x.count; }, 0);
+        gauge('gA', Math.round(severe / total * 1000) / 10, '#ff5b52', '重大及以上占比');
+        chart('cLevel').setOption({ tooltip: Object.assign({}, TIP),
+            legend: { orient: 'vertical', right: 2, top: 'center', textStyle: { color: '#bcdcfa', fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
+            series: [{ type: 'pie', radius: ['48%','72%'], center: ['36%','52%'],
+                data: d.map(function (x) { return { name: x.name, value: x.count, itemStyle: { color: LV_COLOR[x.name] || '#60a5fa' } }; }),
+                label: { show: false }, itemStyle: { borderColor: '#04101f', borderWidth: 3, shadowBlur: 14, shadowColor: 'rgba(34,211,238,.35)' } }],
+            graphic: [{ type: 'text', left: '30%', top: '45%', style: { text: total.toLocaleString() + '\n总计', fill: '#fff', fontSize: 17, fontWeight: 700, textAlign: 'center', lineHeight: 22 } }] });
+    });
+
+    /* 天气分布 -> 仪表盘B(恶劣天气占比) */
+    get('/api/dashboard/distribution?field=weather&months=12').then(function (d) {
+        var total = d.reduce(function (a, x) { return a + x.count; }, 0) || 1;
+        var bad = d.filter(function (x) { return ['晴','多云'].indexOf(x.name) < 0; }).reduce(function (a, x) { return a + x.count; }, 0);
+        gauge('gB', Math.round(bad / total * 1000) / 10, '#f5a524', '恶劣天气占比');
+    });
+
+    /* 成因 TOP6 排行 + 雷达 */
+    get('/api/dashboard/distribution?field=cause&months=12').then(function (d) {
+        rank('rankCause', d.slice(0, 6), 'name', 'count');
+        var top = d.slice(0, 6), max = Math.max.apply(null, top.map(function (x) { return x.count; }).concat([1]));
+        chart('cRadar').setOption({ tooltip: Object.assign({}, TIP),
+            radar: { center: ['50%','54%'], radius: '66%',
+                indicator: top.map(function (x) { return { name: x.name.length > 6 ? x.name.slice(0, 6) : x.name, max: max }; }),
+                axisName: { color: '#9cc3e8', fontSize: 11 }, splitLine: { lineStyle: { color: 'rgba(110,147,189,.25)' } },
+                splitArea: { areaStyle: { color: ['rgba(34,211,238,.03)', 'rgba(34,211,238,.07)'] } }, axisLine: { lineStyle: { color: 'rgba(110,147,189,.3)' } } },
+            series: [{ type: 'radar', data: [{ value: top.map(function (x) { return x.count; }),
+                areaStyle: { color: 'rgba(34,211,238,.28)' }, lineStyle: { color: '#22d3ee', width: 2 }, itemStyle: { color: '#22d3ee' } }] }] });
+    });
+
+    /* 高发路段 TOP6 排行 */
+    get('/api/dashboard/top-roads?months=12&limit=6').then(function (d) { rank('rankRoad', d, 'name', 'count'); });
+
+    /* 月度趋势 柱+双折线 */
     get('/api/dashboard/trend?months=12').then(function (d) {
-        chart('cTrend').setOption({
-            tooltip: Object.assign({ trigger: 'axis' }, TIP),
-            legend: { textStyle: { color: '#8fb6dd', fontSize: 11 }, top: 0, right: 0, itemWidth: 14 },
-            grid: { left: 38, right: 14, top: 30, bottom: 24 },
-            xAxis: Object.assign({ type: 'category', data: d.months.map(function (m) { return m.slice(5) + '月'; }) }, AX),
+        chart('cTrend').setOption({ tooltip: Object.assign({ trigger: 'axis' }, TIP),
+            legend: { textStyle: { color: '#8fb6dd', fontSize: 10 }, top: 0, right: 0, itemWidth: 12, itemHeight: 8 },
+            grid: { left: 32, right: 10, top: 24, bottom: 20 },
+            xAxis: Object.assign({ type: 'category', data: d.months.map(function (m) { return m.slice(5); }) }, AX),
             yAxis: Object.assign({ type: 'value' }, AX),
             series: [
-                { name: '事故数', type: 'bar', data: d.counts, barWidth: 12,
-                  itemStyle: { borderRadius: [3,3,0,0], color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#22d3ee'},{offset:1,color:'rgba(23,105,224,.25)'}]) } },
-                { name: '受伤', type: 'line', smooth: true, data: d.injuries, symbol: 'circle', symbolSize: 5,
-                  lineStyle: { color: '#f5a524', width: 2, shadowColor: 'rgba(245,165,36,.8)', shadowBlur: 8 }, itemStyle: { color: '#f5a524' } },
-                { name: '死亡', type: 'line', smooth: true, data: d.deaths, symbol: 'circle', symbolSize: 5,
-                  lineStyle: { color: '#ff5b52', width: 2, shadowColor: 'rgba(255,91,82,.8)', shadowBlur: 8 }, itemStyle: { color: '#ff5b52' } }
-            ]
-        });
+                { name: '事故', type: 'bar', data: d.counts, barWidth: 9, itemStyle: { borderRadius: [3,3,0,0], color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#22d3ee'},{offset:1,color:'rgba(23,105,224,.25)'}]) } },
+                { name: '伤', type: 'line', smooth: true, data: d.injuries, symbol: 'none', lineStyle: { color: '#f5a524', width: 2 } },
+                { name: '亡', type: 'line', smooth: true, data: d.deaths, symbol: 'none', lineStyle: { color: '#ff5b52', width: 2 } } ] });
     });
 
-    /* ---- 类型构成：玫瑰图 ---- */
+    /* 类型 玫瑰图 */
     get('/api/dashboard/distribution?field=type&months=12').then(function (d) {
-        chart('cType').setOption({
-            tooltip: Object.assign({}, TIP),
-            color: ['#22d3ee','#1769e0','#35e0a1','#f5a524','#ff5b52','#a78bfa','#60a5fa','#f472b6'],
-            series: [{ type: 'pie', roseType: 'radius', radius: ['22%','72%'], center: ['50%','52%'],
+        chart('cType').setOption({ tooltip: Object.assign({}, TIP), color: PIE_COLOR,
+            legend: { type: 'scroll', orient: 'vertical', right: 2, top: 'center', textStyle: { color: '#bcdcfa', fontSize: 11 }, itemWidth: 10 },
+            series: [{ type: 'pie', roseType: 'radius', radius: ['20%','72%'], center: ['38%','52%'],
                 data: d.slice(0, 8).map(function (x) { return { name: x.name, value: x.count }; }),
-                label: { color: '#bcdcfa', fontSize: 11 },
-                itemStyle: { borderColor: '#04101f', borderWidth: 2, shadowBlur: 14, shadowColor: 'rgba(34,211,238,.3)' } }]
-        });
+                label: { show: false }, itemStyle: { borderColor: '#04101f', borderWidth: 2, shadowBlur: 12, shadowColor: 'rgba(34,211,238,.3)' } }] });
     });
 
-    /* ---- 时段×星期热力 ---- */
+    /* 时段×星期 热力 */
     get('/api/dashboard/heatmap?months=12').then(function (d) {
-        chart('cHeat').setOption({
-            tooltip: Object.assign({}, TIP),
-            grid: { left: 36, right: 12, top: 8, bottom: 38 },
+        chart('cHeat').setOption({ tooltip: Object.assign({}, TIP), grid: { left: 30, right: 10, top: 6, bottom: 34 },
             xAxis: Object.assign({ type: 'category', data: Array.from({length:24}, function (_, h) { return h; }) }, AX, { splitLine: { show: false } }),
             yAxis: Object.assign({ type: 'category', data: ['一','二','三','四','五','六','日'] }, AX, { splitLine: { show: false } }),
-            visualMap: { min: 0, max: d.max || 1, calculable: false, orient: 'horizontal', left: 'center', bottom: 0,
-                itemWidth: 10, itemHeight: 90, textStyle: { color: '#8fb6dd', fontSize: 10 },
-                inRange: { color: ['#0a2547', '#1769e0', '#22d3ee', '#f5a524'] } },
-            series: [{ type: 'heatmap', data: d.data, itemStyle: { borderColor: '#04101f', borderWidth: 1 } }]
-        });
+            visualMap: { min: 0, max: d.max || 1, calculable: false, orient: 'horizontal', left: 'center', bottom: 0, itemWidth: 10, itemHeight: 80, textStyle: { color: '#8fb6dd', fontSize: 10 }, inRange: { color: ['#0a2547', '#1769e0', '#22d3ee', '#f5a524'] } },
+            series: [{ type: 'heatmap', data: d.data, itemStyle: { borderColor: '#04101f', borderWidth: 1 } }] });
     });
 
-    /* ---- 等级构成：环形 ---- */
-    get('/api/dashboard/distribution?field=level&months=12').then(function (d) {
-        var total = d.reduce(function (s, x) { return s + x.count; }, 0);
-        chart('cLevel').setOption({
-            tooltip: Object.assign({}, TIP),
-            legend: { orient: 'vertical', right: 6, top: 'center', textStyle: { color: '#bcdcfa', fontSize: 12 }, itemWidth: 12 },
-            series: [{ type: 'pie', radius: ['52%','74%'], center: ['38%','50%'],
-                data: d.map(function (x) { return { name: x.name, value: x.count, itemStyle: { color: LV_COLOR[x.name] || '#60a5fa' } }; }),
-                label: { show: false },
-                itemStyle: { borderColor: '#04101f', borderWidth: 3, shadowBlur: 16, shadowColor: 'rgba(34,211,238,.35)' } }],
-            graphic: [{ type: 'text', left: '31%', top: '44%', style: { text: total.toLocaleString() + '\n总计', fill: '#fff',
-                fontSize: 20, fontWeight: 700, textAlign: 'center', lineHeight: 24 } }]
-        });
-    });
-
-    /* ---- 高发路段 TOP8：横向条 ---- */
-    get('/api/dashboard/top-roads?months=12&limit=8').then(function (d) {
-        d.reverse();
-        chart('cRoads').setOption({
-            tooltip: Object.assign({}, TIP),
-            grid: { left: 8, right: 36, top: 6, bottom: 6, containLabel: true },
-            xAxis: Object.assign({ type: 'value' }, AX, { splitLine: { show: false }, axisLabel: { show: false } }),
-            yAxis: Object.assign({ type: 'category', data: d.map(function (x) { return x.name; }) }, AX, { axisLabel: { color: '#bcdcfa', fontSize: 12 } }),
-            series: [{ type: 'bar', data: d.map(function (x) { return x.count; }), barWidth: 11,
-                label: { show: true, position: 'right', color: '#22d3ee', fontSize: 12 },
-                itemStyle: { borderRadius: [0,5,5,0],
-                    color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'rgba(23,105,224,.4)'},{offset:1,color:'#22d3ee'}]),
-                    shadowColor: 'rgba(34,211,238,.5)', shadowBlur: 8 },
-                showBackground: true, backgroundStyle: { color: 'rgba(110,147,189,.10)', borderRadius: [0,5,5,0] } }]
-        });
-    });
-
-    /* ---- 地理分布 + 实时事故滚动 ---- */
-    Promise.all([
-        fetch('/static/js/maps/donghai.json').then(function (r) { return r.json(); }),
-        get('/api/dashboard/map?months=12')
-    ]).then(function (res) {
-        var geo = res[0], d = res[1];
-        echarts.registerMap('donghai', geo);
-        var byLv = { '轻微事故': [], '一般事故': [], '重大事故': [], '特大事故': [] };
-        d.points.forEach(function (pt) { (byLv[pt.level] = byLv[pt.level] || []).push(pt); });
-        function series(lv, eff) {
-            return { name: lv, type: eff ? 'effectScatter' : 'scatter', coordinateSystem: 'geo',
-                data: byLv[lv] || [], symbolSize: eff ? 11 : 6,
-                rippleEffect: { brushType: 'stroke', scale: 3.5 },
-                itemStyle: { color: LV_COLOR[lv], shadowBlur: 8, shadowColor: LV_COLOR[lv] } };
-        }
+    /* 地图 effectScatter */
+    Promise.all([ fetch('/static/js/maps/donghai.json').then(function (r) { return r.json(); }), get('/api/dashboard/map?months=12') ]).then(function (res) {
+        var geo = res[0], d = res[1]; echarts.registerMap('donghai', geo);
+        var byLv = {}; d.points.forEach(function (pt) { (byLv[pt.level] = byLv[pt.level] || []).push(pt); });
+        function ser(lv, eff) { return { name: lv, type: eff ? 'effectScatter' : 'scatter', coordinateSystem: 'geo', data: byLv[lv] || [],
+            symbolSize: eff ? 11 : 6, rippleEffect: { brushType: 'stroke', scale: 3.5 }, itemStyle: { color: LV_COLOR[lv], shadowBlur: 8, shadowColor: LV_COLOR[lv] } }; }
         chart('mapChart').setOption({
-            tooltip: Object.assign({ formatter: function (q) {
-                var x = q.data || {};
-                return (x.road || '') + '<br>' + (x.level || '') + ' · ' + (x.occur_time || '') +
-                       '<br>死亡 ' + (x.death || 0) + ' 人 / 受伤 ' + (x.injury || 0) + ' 人';
-            } }, TIP),
+            tooltip: Object.assign({ formatter: function (q) { var x = q.data || {}; return (x.road || '') + '<br>' + (x.level || '') + ' · ' + (x.occur_time || '') + '<br>死亡 ' + (x.death || 0) + ' 人 / 受伤 ' + (x.injury || 0) + ' 人'; } }, TIP),
             geo: { map: 'donghai', roam: false, zoom: 1.18, label: { show: false },
-                itemStyle: { areaColor: 'rgba(23,105,224,.14)', borderColor: '#22d3ee', borderWidth: 1.6,
-                    shadowColor: 'rgba(34,211,238,.55)', shadowBlur: 22 },
+                itemStyle: { areaColor: 'rgba(23,105,224,.14)', borderColor: '#22d3ee', borderWidth: 1.6, shadowColor: 'rgba(34,211,238,.55)', shadowBlur: 22 },
                 emphasis: { itemStyle: { areaColor: 'rgba(34,211,238,.10)' }, label: { show: false } } },
-            series: [series('轻微事故'), series('一般事故'), series('重大事故', true), series('特大事故', true)]
-        });
-
-        /* 实时事故滚动：取最近30条，内容翻倍实现无缝滚动 */
-        var feed = document.getElementById('feed');
-        var LV_CLS = { '轻微事故': 'lv-1', '一般事故': 'lv-2', '重大事故': 'lv-3', '特大事故': 'lv-4' };
-        var items = d.points.slice(0, 30).map(function (x) {
-            return '<div class="feed-item"><span class="lv ' + (LV_CLS[x.level] || 'lv-1') + '">' + (x.level || '').replace('事故','') +
-                   '</span><span class="rd">' + (x.road || '-') + '</span><span class="tm">' + (x.occur_time || '') + '</span></div>';
-        }).join('');
-        if (items) {
-            feed.innerHTML = items + items;
-            feed.style.setProperty('--roll-dur', Math.max(20, d.points.slice(0, 30).length * 1.6) + 's');
-            feed.classList.add('anim');
-        } else {
-            feed.innerHTML = '<div class="feed-item"><span class="rd">暂无事故数据</span></div>';
-        }
+            series: [ser('轻微事故'), ser('一般事故'), ser('重大事故', true), ser('特大事故', true)] });
     });
 })();
 </script>
