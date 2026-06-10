@@ -135,6 +135,13 @@ def dashboard():
     return render_template('dashboard.html')
 
 
+@app.route('/bigscreen')
+@login_required
+def bigscreen():
+    """全屏数据大屏（领导展示）"""
+    return render_template('bigscreen.html')
+
+
 @app.route('/api/dashboard/summary')
 @login_required
 def api_summary():
