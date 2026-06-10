@@ -50,7 +50,6 @@ def build():
         '--hidden-import', 'openpyxl.cell._writer',
         '--hidden-import', 'docx',
         '--hidden-import', 'sqlite3',
-        '--collect-submodules', 'werkzeug',
         'app.py',
     ]
     print('[执行] ' + ' '.join(cmd))

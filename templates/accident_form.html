@@ -103,11 +103,28 @@
         </div>
         <div class="form-group">
             <label>经度</label>
-            <input class="form-control" name="longitude" type="number" step="0.000001" value="{{ acc.longitude if acc and acc.longitude else '' }}">
+            <input class="form-control" name="longitude" id="f_lng" type="number" step="0.000001" value="{{ acc.longitude if acc and acc.longitude else '' }}">
         </div>
         <div class="form-group">
             <label>纬度</label>
-            <input class="form-control" name="latitude" type="number" step="0.000001" value="{{ acc.latitude if acc and acc.latitude else '' }}">
+            <input class="form-control" name="latitude" id="f_lat" type="number" step="0.000001" value="{{ acc.latitude if acc and acc.latitude else '' }}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label>地图选点 <span class="text-light" style="font-weight:normal;font-size:12px;">（滚轮缩放，鼠标左键点击地图即定位经纬度）</span></label>
+        <div class="map-picker">
+            <div class="map-picker-bar">
+                <span class="mp-hint">点击地图选择事故点位</span>
+                <span class="spacer"></span>
+                <span>当前坐标：</span>
+                <span class="mp-coord empty" id="mp_coord">未选择</span>
+                <button type="button" class="btn btn-sm btn-default" id="mp_clear">清除</button>
+                <button type="button" class="btn btn-sm btn-default" id="mp_center">回到县城</button>
+            </div>
+            <div id="pickMap"></div>
+            <div class="mp-tilewarn" id="mp_tilewarn" style="display:none;">
+                未检测到离线地图瓦片，地图可能空白。请在联网机运行 <code>python download_donghai_tiles.py</code> 生成 tiles/ 后再用。仍可手动填写经纬度或点击地图取点。
+            </div>
         </div>
     </div>
     <div class="form-row cols-3">
@@ -341,6 +358,71 @@
 
 <script>
 const DICTS = {{ dicts | tojson }};
+
+/* ===== 离线地图选点 ===== */
+(function () {
+    const el = document.getElementById('pickMap');
+    if (!el) return;
+    if (!window.L) {
+        el.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;font-size:13px;">'
+            + '地图引擎 Leaflet 未加载，请在联网机运行 <code>python download_libs.py</code>。仍可手动填写经纬度。</div>';
+        return;
+    }
+    const DONGHAI_CENTER = [34.542, 118.752];
+    const lngEl = document.getElementById('f_lng');
+    const latEl = document.getElementById('f_lat');
+    const coordEl = document.getElementById('mp_coord');
+
+    const map = L.map('pickMap', { center: DONGHAI_CENTER, zoom: 12, minZoom: 9, maxZoom: 19, scrollWheelZoom: true });
+    L.tileLayer('/tiles/{z}/{x}/{y}.png', {
+        minZoom: 9, maxZoom: 19, maxNativeZoom: 18, tileSize: 256,
+        attribution: '© 天地图 GS(2023)336号',
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
+    }).addTo(map);
+
+    // 县界轮廓（便于在范围内取点）
+    fetch('/static/js/maps/donghai.json').then(r => r.ok ? r.json() : null).then(g => {
+        if (g) L.geoJSON(g, { style: { color: '#1769e0', weight: 2, fill: true, fillOpacity: 0.04, dashArray: '5,4' } }).addTo(map);
+    }).catch(() => {});
+
+    const pinIcon = L.divIcon({ className: 'mp-pin', html: '<span></span>', iconSize: [24, 24], iconAnchor: [12, 22] });
+    let marker = null;
+    function fmt(n) { return Number(n).toFixed(6); }
+    function showCoord(lat, lng) { coordEl.textContent = '经度 ' + fmt(lng) + ' , 纬度 ' + fmt(lat); coordEl.classList.remove('empty'); }
+    function place(lat, lng) {
+        if (marker) { marker.setLatLng([lat, lng]); }
+        else {
+            marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
+            marker.on('dragend', e => { const ll = e.target.getLatLng(); writeInputs(ll.lat, ll.lng); });
+        }
+    }
+    function writeInputs(lat, lng) { lngEl.value = fmt(lng); latEl.value = fmt(lat); showCoord(lat, lng); }
+
+    const lat0 = parseFloat(latEl.value), lng0 = parseFloat(lngEl.value);
+    if (!isNaN(lat0) && !isNaN(lng0)) { place(lat0, lng0); map.setView([lat0, lng0], 16); showCoord(lat0, lng0); }
+
+    map.on('click', e => { place(e.latlng.lat, e.latlng.lng); writeInputs(e.latlng.lat, e.latlng.lng); });
+
+    function fromInputs() {
+        const la = parseFloat(latEl.value), ln = parseFloat(lngEl.value);
+        if (!isNaN(la) && !isNaN(ln)) { place(la, ln); map.setView([la, ln], Math.max(map.getZoom(), 16)); showCoord(la, ln); }
+    }
+    latEl.addEventListener('change', fromInputs);
+    lngEl.addEventListener('change', fromInputs);
+
+    document.getElementById('mp_clear').addEventListener('click', () => {
+        if (marker) { map.removeLayer(marker); marker = null; }
+        lngEl.value = ''; latEl.value = '';
+        coordEl.textContent = '未选择'; coordEl.classList.add('empty');
+    });
+    document.getElementById('mp_center').addEventListener('click', () => map.setView(DONGHAI_CENTER, 12));
+
+    fetch('/api/tiles/status').then(r => r.json()).then(s => {
+        if (!s.ready) document.getElementById('mp_tilewarn').style.display = 'block';
+    }).catch(() => {});
+
+    setTimeout(() => map.invalidateSize(), 200);
+})();
 
 function buildSelect(name, opts, selected = '') {
     let h = `<select class="form-control" name="${name}"><option value="">--</option>`;

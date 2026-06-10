@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1769e0"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 4 54 12 V32 C54 46 44 55 32 60 20 55 10 46 10 32 V12 Z"
+        fill="url(#lg)"/>
+  <path d="M32 9 49 15 V32 C49 43.5 41 51 32 55 23 51 15 43.5 15 32 V15 Z"
+        fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="2"/>
+  <!-- road -->
+  <path d="M24 48 L29 22 H35 L40 48 Z" fill="#ffffff"/>
+  <!-- dashed centerline -->
+  <g fill="#1769e0">
+    <rect x="31" y="25" width="2" height="4" rx="1"/>
+    <rect x="31" y="32" width="2" height="4.5" rx="1"/>
+    <rect x="30.6" y="40" width="2.8" height="5" rx="1"/>
+  </g>
+  <!-- forward arrow -->
+  <path d="M32 13 L38 21 H34.5 V27 H29.5 V21 H26 Z" fill="#ffffff"/>
+</svg>

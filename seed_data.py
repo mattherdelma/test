@@ -1,15 +1,145 @@
 """生成演示数据：默认 3 年共约 1500 条事故记录"""
+import os
+import json
 import random
 from datetime import datetime, timedelta
 from database import init_db, get_db, DEFAULT_DICTS
 
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_boundary():
+    """读取东海县真实边界(donghai.json)，返回各多边形的外环点列表。"""
+    path = os.path.join(_BASE_DIR, 'static', 'js', 'maps', 'donghai.json')
+    try:
+        d = json.load(open(path, encoding='utf-8'))
+    except Exception:
+        return None
+    rings = []
+    for ft in d.get('features', []):
+        g = ft.get('geometry', {})
+        t, c = g.get('type'), g.get('coordinates', [])
+        if t == 'Polygon' and c:
+            rings.append(c[0])
+        elif t == 'MultiPolygon':
+            for poly in c:
+                if poly:
+                    rings.append(poly[0])
+    return rings or None
+
+
+_BOUNDARY = _load_boundary()
+if _BOUNDARY:
+    _xs = [p[0] for r in _BOUNDARY for p in r]
+    _ys = [p[1] for r in _BOUNDARY for p in r]
+    _BBOX = (min(_xs), min(_ys), max(_xs), max(_ys))
+else:
+    _BBOX = (118.40, 34.30, 119.13, 34.80)
+
+
+def _in_ring(lon, lat, ring):
+    inside = False
+    n = len(ring)
+    j = n - 1
+    for i in range(n):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if ((yi > lat) != (yj > lat)) and (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def _in_boundary(lon, lat):
+    if not _BOUNDARY:
+        return True
+    return any(_in_ring(lon, lat, r) for r in _BOUNDARY)
+
+
+def rand_point():
+    """生成落在东海县边界内的随机经纬度：约 55% 聚集县城，其余散布全县。"""
+    for _ in range(300):
+        if random.random() < 0.55:        # 县城（牛山/晶都/石榴街道）一带
+            lon = 118.752 + random.uniform(-0.05, 0.05)
+            lat = 34.542 + random.uniform(-0.04, 0.05)
+        else:                              # 全县范围散布
+            lon = random.uniform(_BBOX[0], _BBOX[2])
+            lat = random.uniform(_BBOX[1], _BBOX[3])
+        if _in_boundary(lon, lat):
+            return round(lon, 6), round(lat, 6)
+    return 118.752, 34.542                  # 兜底：县城中心
+
+
+# highway 标签 → 系统道路类型字典值
+_HW_MAP = {
+    'motorway': '高速公路', 'motorway_link': '高速公路',
+    'trunk': '国道', 'trunk_link': '国道',
+    'primary': '城市主干道', 'primary_link': '城市主干道',
+    'secondary': '城市次干道', 'secondary_link': '城市次干道',
+    'tertiary': '城市次干道', 'tertiary_link': '城市次干道',
+    'unclassified': '县道', 'residential': '小区道路',
+    'living_street': '小区道路', 'service': '小区道路',
+}
+
+
+def _load_named_roads():
+    """读取 donghai_roads.json 中“有名称”的道路：返回 [(name, road_type, [[lon,lat],...], weight)]。"""
+    path = os.path.join(_BASE_DIR, 'static', 'js', 'maps', 'donghai_roads.json')
+    try:
+        d = json.load(open(path, encoding='utf-8'))
+    except Exception:
+        return []
+    roads = []
+    for ft in d.get('features', []):
+        p = ft.get('properties', {})
+        name = (p.get('name') or '').strip()
+        if not name:
+            continue
+        g = ft.get('geometry', {})
+        if g.get('type') != 'LineString':
+            continue
+        pts = [c for c in g.get('coordinates', []) if isinstance(c, list) and len(c) >= 2]
+        if len(pts) < 2:
+            continue
+        rtype = _HW_MAP.get(p.get('highway', ''), '城市次干道')
+        # 城区道路权重更高，使事故点更聚集在县城
+        weight = 5 if rtype in ('城市主干道', '城市次干道', '小区道路', '县道') else 1
+        roads.append((name, rtype, pts, weight))
+    return roads
+
+
+_NAMED_ROADS = _load_named_roads()
+_ROAD_WEIGHTS = [r[3] for r in _NAMED_ROADS] if _NAMED_ROADS else None
+
+
+def rand_point_on_road():
+    """在真实道路上取一点：返回 (lon, lat, road_name, road_type)，保证路名与坐标一致且在县界内。"""
+    if not _NAMED_ROADS:
+        lon, lat = rand_point()
+        return lon, lat, '', ''
+    for _ in range(40):
+        name, rtype, pts, _w = random.choices(_NAMED_ROADS, weights=_ROAD_WEIGHTS)[0]
+        i = random.randint(0, len(pts) - 2)
+        t = random.random()
+        lon = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t
+        lat = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t
+        # 轻微抖动（~20m），避免点全压在路中线上
+        lon += random.uniform(-0.0002, 0.0002)
+        lat += random.uniform(-0.0002, 0.0002)
+        if _in_boundary(lon, lat):
+            return round(lon, 6), round(lat, 6), name, rtype
+    return round(lon, 6), round(lat, 6), name, rtype
+
+# 东海县真实道路（城区主次干道 + 过境国省道 + 高速）
 ROADS = [
-    ('人民路', '城市主干道'), ('建设大道', '城市主干道'), ('解放路', '城市主干道'),
-    ('中山路', '城市主干道'), ('迎宾大道', '城市主干道'), ('育才路', '城市次干道'),
-    ('文化路', '城市次干道'), ('滨河路', '城市次干道'), ('工业大道', '城市次干道'),
-    ('科技路', '城市次干道'), ('G312国道', '国道'), ('G316国道', '国道'),
-    ('S101省道', '省道'), ('S207省道', '省道'), ('京港澳高速', '高速公路'),
-    ('沪昆高速', '高速公路'), ('环城东路', '城市次干道'), ('环城西路', '城市次干道'),
+    ('牛山路', '城市主干道'), ('晶都大道', '城市主干道'), ('富华路', '城市主干道'),
+    ('振兴路', '城市主干道'), ('和平路', '城市主干道'), ('利民路', '城市主干道'),
+    ('海陵路', '城市主干道'), ('东海大道', '城市主干道'), ('人民路', '城市主干道'),
+    ('青年路', '城市次干道'), ('幸福路', '城市次干道'), ('郑庄路', '城市次干道'),
+    ('黄海路', '城市次干道'), ('学院路', '城市次干道'), ('安峰路', '城市次干道'),
+    ('G310国道', '国道'), ('S324省道', '省道'), ('S236省道', '省道'),
+    ('S270省道', '省道'), ('S326省道', '省道'),
+    ('G2京沪高速', '高速公路'), ('G30连霍高速', '高速公路'), ('G1516盐洛高速', '高速公路'),
 ]
 SURNAMES = '赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜'
 GIVEN = '伟芳娜敏静秀丽强磊军洋勇艳杰娟涛明超秀兰霞平刚桂英文华建国春梅志强建华丽华志伟玉兰桂兰玉梅秀珍'
@@ -20,13 +150,33 @@ def rand_name():
 
 
 def rand_plate():
-    cities = '京沪粤鲁苏浙皖闽湘鄂'
-    return random.choice(cities) + chr(random.randint(65, 90)) + ''.join(random.choices('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', k=5))
+    # 连云港车牌为「苏G」，演示数据以本地车牌为主，少量外地车
+    if random.random() < 0.8:
+        prefix = '苏G'
+    else:
+        prefix = random.choice(['苏A', '苏B', '苏C', '鲁Q', '鲁L', '皖N', '京A'])
+    return prefix + ''.join(random.choices('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', k=5))
 
 
 def rand_id_card():
-    base = '34010119' + str(random.randint(1970, 2002)) + str(random.randint(1, 12)).zfill(2) + str(random.randint(1, 28)).zfill(2)
+    # 东海县行政区划代码 320722
+    base = '320722' + str(random.randint(1960, 2002)) + str(random.randint(1, 12)).zfill(2) + str(random.randint(1, 28)).zfill(2)
     return base + ''.join(random.choices('0123456789', k=3)) + random.choice('0123456789X')
+
+
+def relocate_outside_points(conn):
+    """把已有数据中落在县界外的事故点，就近重置为县界内的随机点（仅演示数据用）。"""
+    if not _BOUNDARY:
+        return 0
+    rows = conn.execute('SELECT id, longitude, latitude FROM accidents').fetchall()
+    fixed = 0
+    for r in rows:
+        lon, lat = r['longitude'], r['latitude']
+        if lon is None or lat is None or not _in_boundary(lon, lat):
+            nlon, nlat = rand_point()
+            conn.execute('UPDATE accidents SET longitude=?, latitude=? WHERE id=?', (nlon, nlat, r['id']))
+            fixed += 1
+    return fixed
 
 
 def seed(n_per_year=500, years=3):
@@ -34,7 +184,11 @@ def seed(n_per_year=500, years=3):
     with get_db() as conn:
         cur = conn.execute('SELECT COUNT(*) AS c FROM accidents')
         if cur.fetchone()['c'] > 0:
-            print('已有数据，跳过生成。如需重置请删除 data/accidents.db')
+            fixed = relocate_outside_points(conn)
+            msg = '已有数据，跳过生成。'
+            if fixed:
+                msg += f'已将 {fixed} 个越界事故点移入县界内。'
+            print(msg + '如需重置请删除 data/accidents.db')
             return
 
         today = datetime.now()
@@ -78,12 +232,12 @@ def seed(n_per_year=500, years=3):
                     injury = random.randint(5, 20)
                     loss = random.randint(300000, 2000000)
 
-                road = random.choice(ROADS)
                 acc_no = f'JT{occur_time.strftime("%Y%m%d")}{seq:04d}'
                 seq += 1
-                # 演示数据经纬度：合肥及周边 (经度 117.0-117.6, 纬度 31.6-32.1)
-                lon = round(117.0 + random.random() * 0.6, 6)
-                lat = round(31.6 + random.random() * 0.5, 6)
+                # 在真实道路上取点：经纬度落在县界内，且路名/道路类型与位置一致
+                lon, lat, road_name, road_type = rand_point_on_road()
+                if not road_name:                       # 道路数据缺失时退回旧列表
+                    road_name, road_type = random.choice(ROADS)
 
                 cur = conn.execute('''
                     INSERT INTO accidents(
@@ -102,11 +256,11 @@ def seed(n_per_year=500, years=3):
                     random.choices(DEFAULT_DICTS['weather'], weights=[50, 20, 15, 5, 7, 3])[0],
                     random.choices(DEFAULT_DICTS['visibility'], weights=[60, 25, 10, 5])[0],
                     random.choice(DEFAULT_DICTS['district']),
-                    road[0],
+                    road_name,
                     f'{random.randint(1, 30)}号段',
                     f'K{random.randint(1, 200)}+{random.randint(0, 900)}',
                     lon, lat,
-                    road[1],
+                    road_type,
                     random.choice(DEFAULT_DICTS['road_shape']),
                     random.choices(DEFAULT_DICTS['road_condition'], weights=[55, 20, 10, 5, 5, 5])[0],
                     death, injury, loss,

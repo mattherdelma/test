@@ -19,6 +19,7 @@ from werkzeug.utils import secure_filename
 from database import (
     init_db, get_db, DB_PATH, DB_DIR,
     get_dict_options, get_all_dicts, log_action,
+    REGION_NAME, REGION_CENTER,
 )
 from report_generator import (
     export_accidents_excel, export_monthly_report_docx,
@@ -35,12 +36,17 @@ else:
 
 UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
 BACKUP_DIR = os.path.join(BASE_DIR, 'backup')
+# 离线地图瓦片目录：放在 exe 旁（不打进 exe，体积大、单独拷贝），开发时在项目根
+TILES_DIR = os.path.join(BASE_DIR, 'tiles')
 
 app = Flask(__name__,
             template_folder=os.path.join(RES_DIR, 'templates'),
             static_folder=os.path.join(RES_DIR, 'static'))
-app.secret_key = 'traffic-accident-local-app-secret-key-change-me'
+# 每次启动生成随机密钥：使旧的会话 Cookie 失效，确保每次打开程序都需重新登录
+app.secret_key = os.urandom(32)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+# 会话仅在浏览器进程内有效（非持久 Cookie），关闭后再开即需登录
+app.config['SESSION_PERMANENT'] = False
 
 
 @app.template_filter('from_json')
@@ -88,6 +94,7 @@ def inject_globals():
             'role': session.get('role'),
         },
         'now': datetime.now,
+        'region_name': REGION_NAME,
     }
 
 
@@ -126,6 +133,13 @@ def logout():
 @login_required
 def dashboard():
     return render_template('dashboard.html')
+
+
+@app.route('/bigscreen')
+@login_required
+def bigscreen():
+    """全屏数据大屏（领导展示）"""
+    return render_template('bigscreen.html')
 
 
 @app.route('/api/dashboard/summary')
@@ -312,7 +326,7 @@ def api_map():
     n = len(points) or 1
     return jsonify({
         'points': points,
-        'center': [sum_lon / n, sum_lat / n] if points else [104, 35],
+        'center': [sum_lon / n, sum_lat / n] if points else REGION_CENTER,
         'count': len(points),
     })
 
@@ -533,6 +547,101 @@ def statistics():
     return render_template('statistics.html', dicts=get_all_dicts())
 
 
+@app.route('/api/statistics')
+@login_required
+def api_statistics():
+    """多维交叉统计，支持按乡镇(district)下钻过滤。"""
+    dim = request.args.get('dim', 'type')
+    allowed = {
+        'type', 'level', 'cause', 'weather', 'road_type',
+        'road_condition', 'district', 'road_name',
+    }
+    if dim not in allowed:
+        dim = 'type'
+    start = request.args.get('start', '')
+    end = request.args.get('end', '')
+    district = request.args.get('district', '').strip()  # 乡镇下钻
+    months = request.args.get('months', '')
+    if months and not start:
+        try:
+            start = (datetime.now() - timedelta(days=30 * int(months))).strftime('%Y-%m-%d')
+        except ValueError:
+            pass
+
+    where = [f'{dim} IS NOT NULL', f"{dim} != ''"]
+    params = []
+    if start:
+        where.append('occur_time>=?')
+        params.append(start + ' 00:00')
+    if end:
+        where.append('occur_time<=?')
+        params.append(end + ' 23:59')
+    if district:
+        where.append('district=?')
+        params.append(district)
+    where_sql = ' AND '.join(where)
+
+    # 概况 KPI 的过滤条件（不含 dim 非空约束）
+    kpi_where = ['1=1']
+    kpi_params = []
+    if start:
+        kpi_where.append('occur_time>=?')
+        kpi_params.append(start + ' 00:00')
+    if end:
+        kpi_where.append('occur_time<=?')
+        kpi_params.append(end + ' 23:59')
+    if district:
+        kpi_where.append('district=?')
+        kpi_params.append(district)
+    kpi_where_sql = ' AND '.join(kpi_where)
+
+    with get_db() as conn:
+        items = [dict(r) for r in conn.execute(f'''
+            SELECT {dim} AS name, COUNT(*) AS count,
+                   COALESCE(SUM(death_count),0) AS deaths,
+                   COALESCE(SUM(injury_count),0) AS injuries,
+                   COALESCE(SUM(economic_loss),0) AS loss
+            FROM accidents WHERE {where_sql}
+            GROUP BY {dim} ORDER BY count DESC
+        ''', params).fetchall()]
+        trend = [dict(r) for r in conn.execute(f'''
+            SELECT substr(occur_time,1,7) AS ym, COUNT(*) AS count
+            FROM accidents WHERE {kpi_where_sql}
+            GROUP BY ym ORDER BY ym
+        ''', kpi_params).fetchall()]
+        summary = dict(conn.execute(f'''
+            SELECT COUNT(*) AS total,
+                   COALESCE(SUM(death_count),0) AS deaths,
+                   COALESCE(SUM(injury_count),0) AS injuries,
+                   COALESCE(SUM(economic_loss),0) AS loss
+            FROM accidents WHERE {kpi_where_sql}
+        ''', kpi_params).fetchone())
+        heat_rows = conn.execute(
+            f'SELECT occur_time FROM accidents WHERE {kpi_where_sql}', kpi_params
+        ).fetchall()
+
+    # 24小时 × 7星期 热力图（与当前筛选范围一致）
+    matrix = [[0] * 24 for _ in range(7)]
+    for r in heat_rows:
+        try:
+            t = datetime.strptime(r['occur_time'][:16], '%Y-%m-%d %H:%M')
+            matrix[t.weekday()][t.hour] += 1
+        except Exception:
+            continue
+    heatmap = [[h, d, matrix[d][h]] for d in range(7) for h in range(24)]
+    heat_max = max((c for _, _, c in heatmap), default=0)
+
+    return jsonify({
+        'dim': dim,
+        'district': district,
+        'items': items,
+        'trend': trend,
+        'summary': summary,
+        'heatmap': heatmap,
+        'heat_max': heat_max,
+    })
+
+
 # ============ 字典管理 ============
 
 @app.route('/dictionaries')
@@ -733,6 +842,30 @@ def uploaded_file(acc_id, name):
     if not os.path.exists(os.path.join(sub, name)):
         abort(404)
     return send_from_directory(sub, name)
+
+
+# ============ 离线地图瓦片 ============
+
+@app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
+def map_tile(z, x, y):
+    """提供本地离线地图瓦片。缺失返回 404，前端 Leaflet 自动留白。"""
+    sub = os.path.join(TILES_DIR, str(z), str(x))
+    fname = f'{y}.png'
+    if not os.path.exists(os.path.join(sub, fname)):
+        abort(404)
+    resp = send_from_directory(sub, fname)
+    resp.headers['Cache-Control'] = 'public, max-age=604800'
+    return resp
+
+
+@app.route('/api/tiles/status')
+@login_required
+def api_tiles_status():
+    """报告本地瓦片是否就绪，供前端提示。"""
+    ready = os.path.isdir(TILES_DIR) and any(
+        os.scandir(TILES_DIR)
+    ) if os.path.isdir(TILES_DIR) else False
+    return jsonify({'ready': bool(ready)})
 
 
 # ============ 批量导入 ============

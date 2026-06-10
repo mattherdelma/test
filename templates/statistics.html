@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% block title %}统计分析 - {{ super() }}{% endblock %}
-{% block breadcrumb %}<b>统计分析</b> · 多维交叉{% endblock %}
+{% block breadcrumb %}<b>统计分析</b> · 多维交叉 + 乡镇下钻{% endblock %}
 
 {% block content %}
 <div class="card">
     <div class="filter-bar">
         <div class="form-group">
             <label>统计区间</label>
-            <select id="periodSelect" class="form-control" style="width:180px;">
+            <select id="periodSelect" class="form-control" style="width:140px;">
                 <option value="3">近 3 个月</option>
                 <option value="6">近 6 个月</option>
                 <option value="12" selected>近 12 个月</option>
@@ -16,43 +16,68 @@
             </select>
         </div>
         <div class="form-group">
+            <label>乡镇/街道</label>
+            <select id="districtFilter" class="form-control" style="width:150px;">
+                <option value="">全县（全部乡镇）</option>
+                {% for d in dicts.get('district', []) %}
+                <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
             <label>分析维度</label>
-            <select id="dimSelect" class="form-control" style="width:180px;">
+            <select id="dimSelect" class="form-control" style="width:150px;">
+                <option value="district">行政区划（乡镇）</option>
+                <option value="road_name">事故多发路段</option>
                 <option value="type">事故类型</option>
                 <option value="level">事故等级</option>
                 <option value="cause">事故原因</option>
                 <option value="weather">天气状况</option>
                 <option value="road_type">道路类型</option>
                 <option value="road_condition">路面状况</option>
-                <option value="district">行政区划</option>
             </select>
         </div>
     </div>
 </div>
 
+<div id="drillBar" class="mb-10" style="display:none;background:#eaf2fb;border:1px solid #c5dbf2;border-radius:6px;padding:8px 12px;">
+    <b id="drillText" style="color:#1f4e79;"></b>
+    <button class="btn" style="margin-left:12px;padding:2px 10px;font-size:12px;" onclick="clearDrill()">← 返回全县</button>
+</div>
+
+<div class="kpi-grid mb-10">
+    <div class="kpi-card"><div class="kpi-label">事故总数</div><div class="kpi-value" id="s_total">—<span class="kpi-unit">起</span></div></div>
+    <div class="kpi-card danger"><div class="kpi-label">死亡人数</div><div class="kpi-value" id="s_deaths">—<span class="kpi-unit">人</span></div></div>
+    <div class="kpi-card warning"><div class="kpi-label">受伤人数</div><div class="kpi-value" id="s_injuries">—<span class="kpi-unit">人</span></div></div>
+    <div class="kpi-card info"><div class="kpi-label">直接经济损失</div><div class="kpi-value" id="s_loss">—</div></div>
+</div>
+
 <div class="chart-grid-2">
     <div class="card">
-        <div class="card-title">维度分布（饼图）</div>
+        <div class="card-title"><span id="pieTitle">维度分布（饼图）</span></div>
         <div id="chart_pie" class="chart-box tall"></div>
     </div>
     <div class="card">
-        <div class="card-title">维度排名（条形图）</div>
+        <div class="card-title">
+            <span id="barTitle">维度排名（条形图）</span>
+            <span class="extra" id="drillHint" style="color:#7f8c8d;font-size:12px;">提示：维度为「行政区划」时，点击条形可下钻该乡镇</span>
+        </div>
         <div id="chart_bar" class="chart-box tall"></div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-title">月度趋势</div>
+    <div class="card-title"><span id="trendTitle">月度趋势</span></div>
     <div id="chart_trend" class="chart-box tall"></div>
 </div>
 
 <div class="chart-grid-2">
     <div class="card">
-        <div class="card-title">时段分布热力图</div>
+        <div class="card-title">时段分布热力图 <span class="extra">24小时 × 星期</span></div>
         <div id="chart_heatmap" class="chart-box tall"></div>
     </div>
     <div class="card">
-        <div class="card-title">事故多发路段 TOP 15</div>
+        <div class="card-title"><span id="roadTitle">事故多发路段 TOP 15</span></div>
         <div id="chart_road" class="chart-box tall"></div>
     </div>
 </div>
@@ -67,51 +92,105 @@ function chart(id) {
 }
 window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
 
-async function loadAll() {
-    const m = document.getElementById('periodSelect').value;
-    const dim = document.getElementById('dimSelect').value;
+const DIM_LABEL = {
+    district: '行政区划', road_name: '事故多发路段', type: '事故类型',
+    level: '事故等级', cause: '事故原因', weather: '天气状况',
+    road_type: '道路类型', road_condition: '路面状况',
+};
 
-    const dist = await AccApp.fetchJSON(`/api/dashboard/distribution?field=${dim}&months=${m}`);
+// 点击行政区划条形 → 下钻到该乡镇的多发路段
+function drillInto(town) {
+    document.getElementById('districtFilter').value = town;
+    document.getElementById('dimSelect').value = 'road_name';
+    loadAll();
+}
+function clearDrill() {
+    document.getElementById('districtFilter').value = '';
+    document.getElementById('dimSelect').value = 'district';
+    loadAll();
+}
+
+async function loadAll() {
+    const months = document.getElementById('periodSelect').value;
+    const district = document.getElementById('districtFilter').value;
+    const dim = document.getElementById('dimSelect').value;
+    const dimLabel = DIM_LABEL[dim] || '维度';
+    const scope = district ? district : '东海县全县';
+    const base = `?months=${months}&district=${encodeURIComponent(district)}`;
+
+    const data = await AccApp.fetchJSON(`/api/statistics${base}&dim=${dim}`);
+
+    // 下钻提示条
+    const drillBar = document.getElementById('drillBar');
+    if (district) {
+        drillBar.style.display = 'block';
+        document.getElementById('drillText').textContent = `当前下钻：${district}　按「${dimLabel}」统计`;
+    } else {
+        drillBar.style.display = 'none';
+    }
+    document.getElementById('pieTitle').textContent = `${scope} · ${dimLabel}构成`;
+    document.getElementById('barTitle').textContent = `${scope} · ${dimLabel}排名`;
+    document.getElementById('trendTitle').textContent = `${scope} · 月度趋势`;
+    document.getElementById('drillHint').style.display = (dim === 'district') ? '' : 'none';
+
+    // KPI
+    const s = data.summary || {};
+    document.getElementById('s_total').innerHTML = `${s.total || 0}<span class="kpi-unit">起</span>`;
+    document.getElementById('s_deaths').innerHTML = `${s.deaths || 0}<span class="kpi-unit">人</span>`;
+    document.getElementById('s_injuries').innerHTML = `${s.injuries || 0}<span class="kpi-unit">人</span>`;
+    document.getElementById('s_loss').innerHTML = `${AccApp.formatMoney(s.loss || 0)}<span class="kpi-unit">元</span>`;
+
+    // 饼图
     chart('chart_pie').setOption({
         tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
         legend: { type: 'scroll', orient: 'vertical', right: 0, top: 20, bottom: 20 },
         color: AccApp.colors,
         series: [{
-            type: 'pie',
-            radius: ['35%', '70%'],
-            center: ['40%', '50%'],
+            type: 'pie', radius: ['35%', '70%'], center: ['40%', '50%'],
             label: { formatter: '{b}\n{d}%' },
-            data: dist.map(x => ({ name: x.name, value: x.count }))
+            data: data.items.slice(0, 20).map(x => ({ name: x.name, value: x.count }))
         }]
-    });
-    chart('chart_bar').setOption({
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        grid: { left: 100, right: 30, top: 20, bottom: 30 },
-        xAxis: { type: 'value' },
-        yAxis: { type: 'category', data: dist.map(x => x.name).reverse() },
-        series: [{
-            type: 'bar',
-            data: dist.map(x => x.count).reverse(),
-            itemStyle: { color: '#1f4e79' },
-            label: { show: true, position: 'right' }
-        }]
-    });
+    }, true);
 
-    const t = await AccApp.fetchJSON(`/api/dashboard/trend?months=${m}`);
+    // 条形图（含死亡叠加，行政区划维度可点击下钻）
+    const c = chart('chart_bar');
+    const items = data.items.slice(0, 15);
+    c.setOption({
+        tooltip: {
+            trigger: 'axis', axisPointer: { type: 'shadow' },
+            formatter: p => {
+                const r = items[items.length - 1 - p[0].dataIndex] || {};  // 纵轴已 reverse
+                return `${r.name}<br/>事故 ${r.count} 起<br/>死亡 ${r.deaths} 人，受伤 ${r.injuries} 人<br/>损失 ${AccApp.formatMoney(r.loss || 0)} 元`
+                    + (dim === 'district' ? '<br/><span style="color:#1f4e79;">▶ 点击下钻</span>' : '');
+            }
+        },
+        legend: { data: ['事故数', '死亡'], top: 0 },
+        grid: { left: 110, right: 40, top: 30, bottom: 30 },
+        xAxis: { type: 'value' },
+        yAxis: { type: 'category', data: items.map(x => x.name).reverse() },
+        series: [
+            { name: '事故数', type: 'bar', data: items.map(x => x.count).reverse(),
+              itemStyle: { color: dim === 'district' ? '#2e6da4' : '#1f4e79' },
+              label: { show: true, position: 'right' }, cursor: dim === 'district' ? 'pointer' : 'default' },
+            { name: '死亡', type: 'bar', data: items.map(x => x.deaths).reverse(), itemStyle: { color: '#c0392b' } },
+        ]
+    }, true);
+    c.off('click');
+    if (dim === 'district') c.on('click', p => { if (p.name) drillInto(p.name); });
+
+    // 月度趋势
     chart('chart_trend').setOption({
         tooltip: { trigger: 'axis' },
-        legend: { data: ['事故数', '死亡', '受伤'], top: 0 },
-        grid: { left: 50, right: 30, top: 40, bottom: 40 },
-        xAxis: { type: 'category', data: t.months, axisLabel: { rotate: 30 } },
-        yAxis: { type: 'value' },
-        series: [
-            { name: '事故数', type: 'line', smooth: true, data: t.counts, areaStyle: { opacity: 0.2 }, itemStyle: { color: '#1f4e79' }, lineStyle: { width: 3 } },
-            { name: '死亡', type: 'line', smooth: true, data: t.deaths, itemStyle: { color: '#c0392b' } },
-            { name: '受伤', type: 'line', smooth: true, data: t.injuries, itemStyle: { color: '#e67e22' } },
-        ]
-    });
+        grid: { left: 50, right: 30, top: 30, bottom: 40 },
+        xAxis: { type: 'category', data: data.trend.map(x => x.ym), axisLabel: { rotate: 30 } },
+        yAxis: { type: 'value', name: '事故数' },
+        series: [{
+            name: '事故数', type: 'line', smooth: true, data: data.trend.map(x => x.count),
+            areaStyle: { opacity: 0.2 }, itemStyle: { color: '#1f4e79' }, lineStyle: { width: 3 }
+        }]
+    }, true);
 
-    const heat = await AccApp.fetchJSON(`/api/dashboard/heatmap?months=${m}`);
+    // 时段热力图
     const hours = Array.from({ length: 24 }, (_, i) => i + '时');
     const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     chart('chart_heatmap').setOption({
@@ -119,11 +198,15 @@ async function loadAll() {
         grid: { left: 50, right: 30, top: 30, bottom: 60 },
         xAxis: { type: 'category', data: hours, splitArea: { show: true } },
         yAxis: { type: 'category', data: days, splitArea: { show: true } },
-        visualMap: { min: 0, max: heat.max || 1, calculable: true, orient: 'horizontal', left: 'center', bottom: 5, inRange: { color: ['#e8f4fd', '#1f4e79', '#c0392b'] } },
-        series: [{ type: 'heatmap', data: heat.data }]
-    });
+        visualMap: { min: 0, max: data.heat_max || 1, calculable: true, orient: 'horizontal', left: 'center', bottom: 5, inRange: { color: ['#e8f4fd', '#1f4e79', '#c0392b'] } },
+        series: [{ type: 'heatmap', data: data.heatmap }]
+    }, true);
 
-    const roads = await AccApp.fetchJSON(`/api/dashboard/top-roads?months=${m}&limit=15`);
+    // 事故多发路段 TOP 15（始终按 road_name，随乡镇/区间联动）
+    const roadData = (dim === 'road_name') ? data
+        : await AccApp.fetchJSON(`/api/statistics${base}&dim=road_name`);
+    const roads = roadData.items.slice(0, 15);
+    document.getElementById('roadTitle').textContent = `${scope} · 事故多发路段 TOP ${roads.length}`;
     chart('chart_road').setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         legend: { data: ['事故数', '死亡', '受伤'], top: 0 },
@@ -135,10 +218,11 @@ async function loadAll() {
             { name: '死亡', type: 'bar', data: roads.map(x => x.deaths).reverse(), itemStyle: { color: '#c0392b' } },
             { name: '受伤', type: 'bar', data: roads.map(x => x.injuries).reverse(), itemStyle: { color: '#e67e22' } },
         ]
-    });
+    }, true);
 }
 
 document.getElementById('periodSelect').addEventListener('change', loadAll);
+document.getElementById('districtFilter').addEventListener('change', loadAll);
 document.getElementById('dimSelect').addEventListener('change', loadAll);
 loadAll();
 </script>

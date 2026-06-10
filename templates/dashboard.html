@@ -47,43 +47,20 @@
         事故地理分布
         <span class="extra">
             <span id="map_status">加载中…</span>
-            <select id="mapSelect" class="form-control" style="display:inline-block;width:auto;font-size:12px;padding:3px 8px;margin-left:10px;">
-                <option value="china">全国</option>
-                <option value="anhui" selected>安徽省</option>
-                <option value="jiangsu">江苏省</option>
-                <option value="zhejiang">浙江省</option>
-                <option value="shanghai">上海市</option>
-                <option value="beijing">北京市</option>
-                <option value="guangdong">广东省</option>
-                <option value="sichuan">四川省</option>
-                <option value="shandong">山东省</option>
-                <option value="henan">河南省</option>
-                <option value="hubei">湖北省</option>
-                <option value="hunan">湖南省</option>
-                <option value="fujian">福建省</option>
-                <option value="jiangxi">江西省</option>
-                <option value="shanxi">山西省</option>
-                <option value="shaanxi">陕西省</option>
-                <option value="hebei">河北省</option>
-                <option value="liaoning">辽宁省</option>
-                <option value="jilin">吉林省</option>
-                <option value="heilongjiang">黑龙江省</option>
-                <option value="chongqing">重庆市</option>
-                <option value="tianjin">天津市</option>
-                <option value="gansu">甘肃省</option>
-                <option value="qinghai">青海省</option>
-                <option value="yunnan">云南省</option>
-                <option value="guizhou">贵州省</option>
-                <option value="hainan">海南省</option>
-                <option value="neimenggu">内蒙古</option>
-                <option value="ningxia">宁夏</option>
-                <option value="xinjiang">新疆</option>
-                <option value="xizang">西藏</option>
-                <option value="guangxi">广西</option>
+            <select id="mapMode" class="form-control" style="display:inline-block;width:auto;font-size:12px;padding:3px 8px;margin-left:10px;">
+                <option value="point" selected>散点（按等级）</option>
+                <option value="heat">热力图</option>
             </select>
+            <label style="font-size:12px;color:#7f8c8d;margin-left:10px;">
+                <input type="checkbox" id="boundaryToggle" checked style="vertical-align:middle;"> 县界
+            </label>
         </span>
     </div>
-    <div id="chart_map" style="height:480px;"></div>
+    <div id="chart_map" style="height:520px;border:1px solid #e3e8ee;border-radius:6px;"></div>
+    <div id="tileHint" style="display:none;font-size:12px;color:#c0392b;padding:6px 2px;">
+        未检测到离线地图瓦片（tiles/ 目录），当前仅显示县界与事故点。
+        请在能联网的机器上运行 <code>python download_donghai_tiles.py</code> 生成瓦片后拷贝过来。
+    </div>
 </div>
 
 <div class="chart-grid">
@@ -144,114 +121,129 @@ function chart(id) {
 }
 window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
 
-const MAP_FILE = {
-    'china': 'china.json',
-    'anhui': 'province/anhui.json',
-    'jiangsu': 'province/jiangsu.json',
-    'zhejiang': 'province/zhejiang.json',
-    'shanghai': 'province/shanghai.json',
-    'beijing': 'province/beijing.json',
-    'guangdong': 'province/guangdong.json',
-    'sichuan': 'province/sichuan.json',
-    'shandong': 'province/shandong.json',
-    'henan': 'province/henan.json',
-    'hubei': 'province/hubei.json',
-    'hunan': 'province/hunan.json',
-    'fujian': 'province/fujian.json',
-    'jiangxi': 'province/jiangxi.json',
-    'shanxi': 'province/shanxi.json',
-    'shaanxi': 'province/shaanxi.json',
-    'hebei': 'province/hebei.json',
-    'liaoning': 'province/liaoning.json',
-    'jilin': 'province/jilin.json',
-    'heilongjiang': 'province/heilongjiang.json',
-    'chongqing': 'province/chongqing.json',
-    'tianjin': 'province/tianjin.json',
-    'gansu': 'province/gansu.json',
-    'qinghai': 'province/qinghai.json',
-    'yunnan': 'province/yunnan.json',
-    'guizhou': 'province/guizhou.json',
-    'hainan': 'province/hainan.json',
-    'neimenggu': 'province/neimenggu.json',
-    'ningxia': 'province/ningxia.json',
-    'xinjiang': 'province/xinjiang.json',
-    'xizang': 'province/xizang.json',
-    'guangxi': 'province/guangxi.json',
-};
-const mapLoaded = {};
 const LEVEL_COLOR = { '轻微事故': '#27ae60', '一般事故': '#f39c12', '重大事故': '#e67e22', '特大事故': '#c0392b' };
 
-async function ensureMap(name) {
-    if (mapLoaded[name]) return name;
-    const url = `/static/js/maps/${MAP_FILE[name]}`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`地图文件加载失败: ${url}`);
-    const data = await r.json();
-    echarts.registerMap(name, data);
-    mapLoaded[name] = true;
-    return name;
+// ====== 离线瓦片地图（Leaflet）：像高德一样可缩放、逐层看街道细节 ======
+const DONGHAI_CENTER = [34.542, 118.752];   // [lat, lon]
+let lmap = null, tileLayer = null, ptLayer = null, heatLayer = null, boundaryLayer = null;
+let boundaryGeo = null, boundaryTried = false;
+
+function initLeaflet() {
+    if (lmap) return lmap;
+    if (!window.L) {   // Leaflet 未就绪（未运行 download_libs.py）
+        document.getElementById('chart_map').innerHTML =
+            '<div style="padding:40px;text-align:center;color:#c0392b;">' +
+            '地图引擎 Leaflet 未加载。请在能联网的机器上运行 ' +
+            '<code>python download_libs.py</code> 后重试。</div>';
+        return null;
+    }
+    lmap = L.map('chart_map', { center: DONGHAI_CENTER, zoom: 11, minZoom: 9, maxZoom: 19, zoomControl: true });
+    // 本地离线瓦片；缺失的瓦片自动留白（不报错）
+    tileLayer = L.tileLayer('/tiles/{z}/{x}/{y}.png', {
+        minZoom: 9, maxZoom: 19,
+        // 天地图瓦片最高到 z18；放大到 z19 时用 z18 瓦片拉伸填充，不留白
+        maxNativeZoom: 18, tileSize: 256,
+        attribution: '© 天地图 GS(2023)336号 | 东海县离线底图',
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
+    }).addTo(lmap);
+    ptLayer = L.layerGroup().addTo(lmap);
+    return lmap;
+}
+
+async function ensureBoundary() {
+    if (boundaryTried) return boundaryGeo;
+    boundaryTried = true;
+    try {
+        const r = await fetch('/static/js/maps/donghai.json');
+        if (r.ok) boundaryGeo = await r.json();
+    } catch (e) { boundaryGeo = null; }
+    return boundaryGeo;
+}
+
+function drawBoundary(show) {
+    if (boundaryLayer) { lmap.removeLayer(boundaryLayer); boundaryLayer = null; }
+    if (show && boundaryGeo) {
+        boundaryLayer = L.geoJSON(boundaryGeo, {
+            style: { color: '#1f4e79', weight: 2, fill: false, dashArray: '4,3' }
+        }).addTo(lmap);
+    }
 }
 
 async function renderMap(months) {
-    const mapKey = document.getElementById('mapSelect').value;
+    if (!initLeaflet()) return;
     const statusEl = document.getElementById('map_status');
+    const mode = document.getElementById('mapMode').value;
     statusEl.textContent = '地图加载中…';
+
+    // 瓦片就绪检测（仅提示，不阻断）
     try {
-        await ensureMap(mapKey);
+        const st = await AccApp.fetchJSON('/api/tiles/status');
+        document.getElementById('tileHint').style.display = st.ready ? 'none' : 'block';
+    } catch (e) { /* ignore */ }
+
+    // 先取事故点数据（优先保证散点/热力图能画出来）
+    let m;
+    try {
+        m = await AccApp.fetchJSON(`/api/dashboard/map?months=${months}`);
     } catch (e) {
-        statusEl.innerHTML = '<span style="color:#c0392b;">地图文件未找到</span>';
+        console.error('事故点数据加载失败', e);
+        statusEl.textContent = '事故点加载失败';
         return;
     }
-    const m = await AccApp.fetchJSON(`/api/dashboard/map?months=${months}`);
     statusEl.textContent = `共 ${m.count} 个事故点`;
 
-    const series = [];
-    // 分等级散点
-    const groups = {};
-    for (const p of m.points) {
-        (groups[p.level || '其他'] = groups[p.level || '其他'] || []).push(p);
-    }
-    for (const lv in groups) {
-        series.push({
-            name: lv,
-            type: 'scatter',
-            coordinateSystem: 'geo',
-            data: groups[lv],
-            symbolSize: v => Math.min(30, 5 + Math.sqrt(v[2]) * 2.5),
-            itemStyle: { color: LEVEL_COLOR[lv] || '#7f8c8d', opacity: 0.75, borderColor: '#fff', borderWidth: 0.5 },
-            emphasis: { scale: 1.6 },
-        });
+    // 清空旧图层
+    ptLayer.clearLayers();
+    if (heatLayer) { lmap.removeLayer(heatLayer); heatLayer = null; }
+
+    if (!m.points || m.count === 0) {
+        statusEl.textContent = '该统计区间内无事故点，请切换更长的统计区间（如近 24/36 个月）';
     }
 
-    chart('chart_map').clear();
-    chart('chart_map').setOption({
-        tooltip: {
-            trigger: 'item',
-            formatter: p => {
-                if (p.seriesType !== 'scatter') return p.name || '';
-                const d = p.data;
-                return `<b>${d.name}</b><br/>
-                    时间: ${d.occur_time}<br/>
-                    地点: ${d.road}<br/>
-                    等级: ${d.level} · ${d.type}<br/>
-                    死亡: ${d.death} 人，受伤: ${d.injury} 人`;
+    // 渲染散点 / 热力图（独立 try，避免任何异常阻断）
+    let drawn = 0;
+    try {
+        if (mode === 'heat' && window.L && L.heatLayer) {
+            // 热力图：[lat, lon, intensity]
+            const heatData = m.points.map(p => [p.value[1], p.value[0], Math.min(1, p.value[2] / 20)]);
+            heatLayer = L.heatLayer(heatData, { radius: 22, blur: 18, maxZoom: 17 }).addTo(lmap);
+            drawn = heatData.length;
+        } else {
+            // 散点：按等级着色，点击看详情
+            for (const p of m.points) {
+                const lon = p.value[0], lat = p.value[1], w = p.value[2];
+                const marker = L.circleMarker([lat, lon], {
+                    radius: Math.min(16, 4 + Math.sqrt(w) * 2),
+                    color: '#fff', weight: 0.9,
+                    fillColor: LEVEL_COLOR[p.level] || '#7f8c8d', fillOpacity: 0.85,
+                });
+                marker.bindPopup(
+                    `<b>${p.name}</b><br/>时间: ${p.occur_time}<br/>地点: ${p.road}<br/>` +
+                    `等级: ${p.level} · ${p.type}<br/>死亡: ${p.death} 人，受伤: ${p.injury} 人`
+                );
+                ptLayer.addLayer(marker);
+                drawn++;
             }
-        },
-        legend: {
-            data: Object.keys(groups),
-            top: 10,
-            textStyle: { fontSize: 12 }
-        },
-        geo: {
-            map: mapKey,
-            roam: true,
-            label: { show: mapKey !== 'china', fontSize: 10, color: '#666' },
-            itemStyle: { areaColor: '#e8f1fa', borderColor: '#7faec9' },
-            emphasis: { itemStyle: { areaColor: '#cbe0f3' }, label: { color: '#1f4e79' } },
-            scaleLimit: { min: 0.5, max: 12 }
-        },
-        series,
-    });
+        }
+        if (m.count > 0) statusEl.textContent = `共 ${m.count} 个事故点（已绘制 ${drawn}）`;
+    } catch (e) {
+        console.error('事故点渲染失败', e);
+        statusEl.textContent = '事故点渲染异常：' + (e && e.message ? e.message : e);
+    }
+
+    // 县界最后画：即使边界数据异常，也不影响上面的散点/热力图
+    try {
+        await ensureBoundary();
+        drawBoundary(document.getElementById('boundaryToggle').checked);
+    } catch (e) {
+        console.error('县界渲染失败', e);
+    }
+
+    // 修正容器尺寸（防止初始化时布局未稳导致图层不显示），并把事故点置于最上层
+    try {
+        lmap.invalidateSize();
+        ptLayer.eachLayer(l => l.bringToFront && l.bringToFront());
+    } catch (e) { /* ignore */ }
 }
 
 async function loadAll() {
@@ -403,7 +395,8 @@ async function loadAll() {
 }
 
 document.getElementById('periodSelect').addEventListener('change', () => { loadAll(); renderMap(document.getElementById('periodSelect').value); });
-document.getElementById('mapSelect').addEventListener('change', () => renderMap(document.getElementById('periodSelect').value));
+document.getElementById('mapMode').addEventListener('change', () => renderMap(document.getElementById('periodSelect').value));
+document.getElementById('boundaryToggle').addEventListener('change', () => renderMap(document.getElementById('periodSelect').value));
 loadAll();
 renderMap(document.getElementById('periodSelect').value);
 </script>
